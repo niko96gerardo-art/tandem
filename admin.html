@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaNdeM | Administración</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;700&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body class="admin-page">
+    <main class="admin-shell">
+        <section class="admin-login" id="loginView">
+            <p class="mono">[ PANEL PRIVADO ]</p>
+            <h1>Administrar catálogo</h1>
+            <form id="loginForm" class="admin-form">
+                <label for="email">Correo electrónico</label>
+                <input id="email" type="email" required autocomplete="email">
+                <label for="password">Contraseña</label>
+                <input id="password" type="password" required autocomplete="current-password">
+                <label class="admin-check"><input id="rememberSession" type="checkbox"> Mantener la sesión iniciada</label>
+                <button class="btn btn-accent" type="submit">Ingresar</button>
+            </form>
+            <p class="admin-status" id="loginStatus" role="alert"></p>
+        </section>
+
+        <section class="admin-dashboard" id="dashboardView" hidden>
+            <div class="admin-heading">
+                <div>
+                    <p class="mono">[ CATÁLOGO ]</p>
+                    <h1>Trabajos</h1>
+                </div>
+                <button class="btn" id="logoutButton" type="button">Cerrar sesión</button>
+            </div>
+            <nav class="admin-tabs" aria-label="Secciones de administración">
+                <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
+                <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
+            </nav>
+            <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
+                <form id="productForm" class="admin-form admin-product-form">
+                <h2>Agregar trabajo</h2>
+                <label for="productCode">Código del trabajo</label>
+                <input id="productCode" placeholder="Ej: REM-001 (si lo dejás vacío se genera solo)">
+                <label for="productName">Nombre (opcional)</label>
+                <input id="productName">
+                <label for="productType">Categoría</label>
+                <select id="productType" required></select>
+                <input id="newProductType" placeholder="Nombre de la nueva categoría" hidden>
+                <label for="productDescription">Descripción</label>
+                <textarea id="productDescription" rows="3"></textarea>
+                <label for="productPrice">Precio</label>
+                <input id="productPrice" placeholder="Opcional">
+                    <label class="admin-dropzone" for="productImages">
+                    <span>Arrastrá fotos aquí o elegilas. Podés sumar varias tandas.</span>
+                    <input id="productImages" type="file" accept="image/*" multiple>
+                </label>
+                <div class="admin-image-preview" id="imagePreview"></div>
+                <button class="btn btn-accent" type="submit">Guardar trabajo</button>
+                </form>
+                <p class="admin-status" id="dashboardStatus" role="status"></p>
+                <div class="admin-products-toolbar" aria-label="Filtrar trabajos">
+                    <label>Buscar<input id="productSearch" type="search" placeholder="Código, nombre o descripción"></label>
+                    <label>Categoría<select id="productCategoryFilter"><option value="">Todas las categorías</option></select></label>
+                    <label>Mostrar<select id="productVisibilityFilter"><option value="todos">Todos</option><option value="visibles">Solo visibles</option><option value="ocultos">Solo ocultos</option></select></label>
+                    <label>Ordenar<select id="productSort"><option value="nuevos">Más nuevos</option><option value="antiguos">Más antiguos</option><option value="alfabetico">Código A-Z</option></select></label>
+                </div>
+                <p class="admin-results-count" id="productsCount" aria-live="polite"></p>
+                <div class="admin-products" id="productsList"></div>
+            </div>
+            <section class="admin-category-editor admin-panel" data-admin-panel="categorias" hidden>
+                <h2>Textos de categorías</h2>
+                <p>Estos textos se muestran en la portada y arriba de cada categoría.</p>
+                <div class="admin-category-list" id="categoryList"></div>
+            </section>
+        </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

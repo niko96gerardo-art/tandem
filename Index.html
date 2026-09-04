@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaNdeM | Taller de Estampado</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;700&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="supabase-public.js"></script>
+
+</head>
+<body>
+
+    <!-- HEADER / NAVEGACIÓN -->
+    <header>
+        <div class="container nav-container">
+            <a href="#" class="logo">
+                <img src="logo.jpg" alt="Logo Tandem Taller de Grabado">
+            </a>
+            <button class="menu-toggle" id="menuToggle">☰</button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#hero">Inicio</a></li>
+                <li><a href="./Index.html#catalogo">Catálogo</a></li>
+                <li><a href="#info">Info</a></li>
+                <li><a href="#adminAccess" id="adminAccessLink">Administrar</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <main>
+        <section id="hero" class="hero">
+            <div class="container">
+                <p class="mono">[ TALLER DE GRABADO Y ESTAMPADO ]</p>
+                <h1 class="layered-text">DISEÑO Y SERIGRAFÍA</h1>
+                <p>Materializamos tus ideas en prendas de alta calidad. Directo del taller a tus manos.</p>
+                <a href="#catalogo" class="btn">Ver Catálogo</a>
+            </div>
+        </section>
+
+        <!-- SOBRE NOSOTROS -->
+        <section id="nosotros" style="background-color: #ffffff;">
+            <div class="container nosotros-container">
+                <div class="nosotros-img">
+                    <img id="fotoMabel" src="Mabel1.jpeg" alt="Mabel Calabrese, creadora de TaNdeM" data-foto1="Mabel1.jpeg" data-foto2="Mabel2.jpeg">
+                </div>
+                <div class="nosotros-texto">
+                    <h2>Detrás del Taller</h2>
+                    <p>¡Hola! Soy <strong>Mabel Calabrese</strong>, Profesora en Grabado y Arte Impreso, creadora y emprendedora de este espacio.</p>
+                    
+                    <p><strong>TaNdeM Taller de Grabado, Estampados y Más</strong> es mi emprendimiento principal; un taller de producción dedicado al trabajo manual, el diseño y el cuidado por los detalles en cada pieza.</p>
+
+                    <p>Además, llevo adelante con mucho orgullo el proyecto <strong>TaNdeM Taller Creativo Terapéutico</strong>, un espacio de expresión y aprendizaje orientado especialmente a adolescentes, jóvenes y adultos dentro del espectro autista.</p>
+                    
+                    <br>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1rem;">
+                        <!-- Botón Instagram -->
+                        <a href="https://www.instagram.com/tandem_grabadoestampadosymas/" target="_blank" rel="noopener noreferrer" class="btn btn-accent">
+                            Instagram
+                        </a>
+
+                        <!-- Botón WhatsApp -->
+                        <a href="https://wa.me/+5492216055307" target="_blank" rel="noopener noreferrer" class="btn btn-accent" style="background-color: #25D366;">
+                            WhatsApp
+                        </a>
+                    </div>
+                    
+                </div>
+            </div>
+        </section>
+
+        <!-- CATÁLOGO -->
+        <section id="catalogo">
+            <div class="container">
+                <h2>Productos</h2>
+                <p class="mono">Estampamos, remeras, buzos tazas.Remeras , buzos y Camisetas de Argentina Futbol Selección. Bordadas . Sublimadas Intervenidas o sin.Consultanos.</p>
+                <div class="catalogo-grid catalogo-categorias" id="catalogoGrid"></div>
+            </div>
+        </section>
+
+    <!-- INFORMACIÓN DEL TALLER -->
+    <section id="info" style="background-color: var(--brand-blue); color: #ffffff;">
+        <div class="container">
+            <h2 style="color: #ffffff;">Nuestro Espacio</h2>
+            
+            <div style="border: 2px dashed #ffffff; padding: var(--space-sm); color: #ffffff;">
+                <p class="mono" style="margin-bottom: 0.5rem;">> UBICACIÓN: CITY BELL, LA PLATA</p>
+                
+                <p>
+                    TaNdeM no es solo una tienda virtual, es un espacio real donde las cosas se hacen con las manos. Ubicado en <strong>City Bell</strong>, trabajamos todos los días entre tintas, mallas de serigrafía y prensas de grabado. 
+                </p>
+                <p>
+                    Acá es donde se diseña y estampa cada pieza. hecho con tiempo, dedicación y prestando atención a cada detalle del proceso para lograr un resultado único.
+                </p>
+                
+                <p class="mono" style="margin-top: 1rem; margin-bottom: 0.5rem;">> ENTREGAS Y RETIROS:</p>
+                <p style="margin-bottom: 0;">
+                    Se retira en el lugar de 12 a 15 hs. Se entrega los miércoles zona norte y La Plata y se envía cargo cliente a todo el país.
+                </p>
+            </div>
+        </div>
+    </section>
+    </main>
+
+    <section class="admin-inline admin-overlay" id="adminAccess" hidden>
+        <div class="admin-shell">
+            <button class="admin-overlay-close" id="adminOverlayClose" type="button" aria-label="Cerrar administración">&times;</button>
+            <section class="admin-login" id="loginView">
+                <p class="mono">[ PANEL PRIVADO ]</p>
+                <h1>Administrar catálogo</h1>
+                <form id="loginForm" class="admin-form">
+                    <label for="email">Correo electrónico</label><input id="email" type="email" required autocomplete="email">
+                    <label for="password">Contraseña</label><input id="password" type="password" required autocomplete="current-password">
+                    <label class="admin-check"><input id="rememberSession" type="checkbox"> Mantener la sesión iniciada</label>
+                    <button class="btn btn-accent" type="submit">Ingresar</button>
+                </form>
+                <p class="admin-status" id="loginStatus" role="alert"></p>
+            </section>
+            <section class="admin-dashboard" id="dashboardView" hidden>
+                <div class="admin-heading"><div><p class="mono">[ CATÁLOGO ]</p><h1>Trabajos</h1></div><button class="btn" id="logoutButton" type="button">Cerrar sesión</button></div>
+                <nav class="admin-tabs" aria-label="Secciones de administración">
+                    <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
+                    <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
+                </nav>
+                <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
+                    <form id="productForm" class="admin-form admin-product-form">
+                    <h2>Agregar trabajo</h2>
+                    <label for="productCode">Código del trabajo</label><input id="productCode" placeholder="Ej: REM-001 (si lo dejás vacío se genera solo)">
+                    <label for="productName">Nombre (opcional)</label><input id="productName">
+                    <label for="productType">Categoría</label><select id="productType" required></select>
+                    <input id="newProductType" placeholder="Nombre de la nueva categoría" hidden>
+                    <label for="productDescription">Descripción</label><textarea id="productDescription" rows="3"></textarea>
+                    <label for="productPrice">Precio</label><input id="productPrice">
+                    <label class="admin-dropzone" for="productImages"><span>Arrastrá fotos aquí o elegilas. Podés sumar varias tandas.</span><input id="productImages" type="file" accept="image/*" multiple></label>
+                    <div class="admin-image-preview" id="imagePreview"></div>
+                    <button class="btn btn-accent" type="submit">Guardar trabajo</button>
+                    </form>
+                    <p class="admin-status" id="dashboardStatus" role="status"></p>
+                    <div class="admin-products-toolbar" aria-label="Filtrar trabajos">
+                        <label>Buscar<input id="productSearch" type="search" placeholder="Código, nombre o descripción"></label>
+                        <label>Categoría<select id="productCategoryFilter"><option value="">Todas las categorías</option></select></label>
+                        <label>Mostrar<select id="productVisibilityFilter"><option value="todos">Todos</option><option value="visibles">Solo visibles</option><option value="ocultos">Solo ocultos</option></select></label>
+                        <label>Ordenar<select id="productSort"><option value="nuevos">Más nuevos</option><option value="antiguos">Más antiguos</option><option value="alfabetico">Código A-Z</option></select></label>
+                    </div>
+                    <p class="admin-results-count" id="productsCount" aria-live="polite"></p>
+                    <div class="admin-products" id="productsList"></div>
+                </div>
+                <section class="admin-category-editor admin-panel" data-admin-panel="categorias" hidden>
+                    <h2>Textos de categorías</h2>
+                    <p>Estos textos se muestran en la portada y arriba de cada categoría.</p>
+                    <div class="admin-category-list" id="categoryList"></div>
+                </section>
+            </section>
+        </div>
+    </section>
+
+    <!-- MODAL (Ventana Emergente de Producto) -->
+    <div id="productoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            
+            <!-- Contenido de la ventana -->
+            <h3 style="color: var(--brand-blue);">Trabajo de Referencia</h3>
+            <div style="width: 100%; height: 200px; background-color: var(--canvas); border: 2px solid var(--brand-dark); margin-bottom: 1rem; border-radius: 4px;">
+                <!-- Acá podrías poner una imagen más grande luego -->
+            </div>
+            
+            <p>Este producto es un ejemplo de las técnicas y materiales que utilizamos en el taller. Sirve como punto de partida para que diseñemos juntos lo que tenés en mente.</p>
+            <p class="mono">> IDEAL PARA: REGALOS EMPRESARIALES, MERCHANDISING O PROYECTOS PERSONALES.</p>
+            
+            <!-- Botón para ir a WhatsApp a consultar por algo similar -->
+            <a href="https://wa.me/5492216055307?text=Hola%20Mabel!%20Estuve%20viendo%20el%20catálogo%20y%20quería%20consultar%20por%20un%20trabajo%20a%20medida." target="_blank" rel="noopener noreferrer" class="btn btn-accent" style="background-color: #25D366; margin-top: 1rem;">
+                Consultar por un diseño
+            </a>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer style="text-align: center; padding: var(--space-md) 0; border-top: 2px solid var(--brand-dark); background-color: #ffffff;">
+    </footer>
+
+    <!-- JAVASCRIPT BÁSICO PARA EL MENÚ MÓVIL -->
+    <script>
+        const menuToggle = document.getElementById('menuToggle');
+        const navLinks = document.getElementById('navLinks');
+
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+        navLinks.querySelectorAll('a').forEach(enlace => enlace.addEventListener('click', () => navLinks.classList.remove('active')));
+        document.getElementById('adminAccessLink').addEventListener('click', () => {
+            document.getElementById('adminAccess').hidden = false;
+            document.body.classList.add('admin-open');
+        });
+        document.getElementById('adminOverlayClose').addEventListener('click', () => {
+            document.getElementById('adminAccess').hidden = true;
+            document.body.classList.remove('admin-open');
+        });
+        // =========================================
+        // SCRIPT PARA LA VENTANA MODAL DE PRODUCTOS
+        // =========================================
+        const modal = document.getElementById('productoModal');
+        const closeModal = document.getElementById('closeModal');
+        
+        // Seleccionamos TODOS los botones que tengan la clase "btn-saber-mas"
+        const botonesSaberMas = document.querySelectorAll('.btn-saber-mas');
+
+        // A cada botón de "Saber Mas", le decimos que abra el modal al hacer clic
+        botonesSaberMas.forEach(boton => {
+            boton.addEventListener('click', (evento) => {
+                evento.preventDefault(); // Evita que la página salte hacia arriba por el href="#"
+                modal.classList.add('active'); // Muestra la ventana
+            });
+        });
+
+        // Cierra el modal al hacer clic en la "X"
+        closeModal.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        // Cierra el modal si el usuario hace clic afuera de la caja blanca
+        window.addEventListener('click', (evento) => {
+            if (evento.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+
+        // FOTO DE MABEL: alterna entre las dos fotos al hacer click
+        const fotoMabel = document.getElementById('fotoMabel');
+        fotoMabel.addEventListener('click', () => {
+            const mostrandoPrimera = fotoMabel.src.includes(fotoMabel.dataset.foto1.split('/').pop());
+            fotoMabel.src = mostrandoPrimera ? fotoMabel.dataset.foto2 : fotoMabel.dataset.foto1;
+        });
+
+        const catalogoGrid = document.getElementById('catalogoGrid');
+        const catalogoSheetPublicado = 'https://docs.google.com/spreadsheets/d/1LLRpvRjDflHcPmnW18aIW0TuIQq0grt98MQG5nOIR84/export?format=xlsx';
+
+        function estaActivo(valor) {
+            return valor === true || ['true', 'si', 'sí', '1', 'activo'].includes(String(valor).trim().toLowerCase());
+        }
+
+        function formatearPrecio(valor) {
+            return String(valor || '').replace(/(?:\$\s*)?(\d[\d.]*)/g, (_, numero) => {
+                const valorNumerico = Number(numero.replace(/\./g, ''));
+                if (!Number.isFinite(valorNumerico)) return `$${numero}`;
+                return `$${valorNumerico.toLocaleString('es-AR')}`;
+            });
+        }
+
+        function mostrarCatalogo(productos, categorias = [], nuevosPrimero = false) {
+            const categoriasDisponibles = [...new Map(productos
+                .filter(producto => estaActivo(producto.Activo ?? true) && (producto.Nombre || producto.Imagen || producto.Imagenes))
+                .map(producto => {
+                    const tipo = detectarTipoProducto(producto);
+                    const categoria = categorias.find(item => normalizarTipoProducto(obtenerCampoCategoria(item, ['tipo', 'categoria'])) === tipo);
+                    return [tipo, { tipo, titulo: categoria?.Titulo || etiquetaCategoria(tipo, producto.Tipo), texto: obtenerCampoCategoria(categoria, ['textotarjeta', 'texto tarjeta']) || 'Ver todos los trabajos de esta categoría.', enlace: obtenerEnlaceCategoria(tipo) }];
+                }))].map(([, categoria]) => categoria);
+            catalogoGrid.innerHTML = '';
+            categoriasDisponibles.forEach(categoria => {
+                const productosCategoria = productos.filter(producto => estaActivo(producto.Activo ?? true) && (producto.Nombre || producto.Imagen || producto.Imagenes) && detectarTipoProducto(producto) === categoria.tipo);
+                const productosConImagen = productosCategoria.filter(producto => producto.Imagen || producto.Imagenes);
+                const ultimoProducto = nuevosPrimero ? productosConImagen[0] : [...productosConImagen].reverse()[0];
+                if (!ultimoProducto) return;
+                const enlace = document.createElement('a');
+                enlace.className = 'producto-card-link';
+                enlace.href = categoria.enlace;
+                const imagen = convertirImagenProducto(ultimoProducto.Imagen, categoria.tipo);
+                enlace.innerHTML = `
+                    <article class="producto-card">
+                        <div class="producto-img"><img src="${imagen}" alt="${categoria.titulo}" onerror="this.onerror=null;this.src='logo.JPG'"></div>
+                        <h3>${categoria.titulo}</h3>
+                        <p>${categoria.texto}</p>
+                        <span class="btn btn-accent">VER TRABAJOS</span>
+                    </article>`;
+                catalogoGrid.appendChild(enlace);
+            });
+        }
+
+        function obtenerCampoCategoria(fila, nombres) {
+            if (!fila) return '';
+            const claveEncontrada = Object.keys(fila).find(clave => {
+                const claveNormalizada = String(clave).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '');
+                return nombres.includes(claveNormalizada);
+            });
+            return claveEncontrada ? String(fila[claveEncontrada] || '').trim() : '';
+        }
+
+        function detectarTipoProducto(producto) {
+            const tipoDeclarado = producto.Tipo || producto.tipo || producto.Categoria || producto['Categoría'];
+            const datosProducto = tipoDeclarado || [producto.Nombre, producto.Descripcion, producto.Imagen].join(' ');
+            return normalizarTipoProducto(datosProducto);
+        }
+
+        function normalizarTipoProducto(tipo) {
+            const datosProducto = String(tipo || '').toLowerCase();
+            const tipoNormalizado = datosProducto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (tipoNormalizado.includes('taza')) return 'taza';
+            if (tipoNormalizado.includes('puzzle')) return 'puzzle';
+            return tipoNormalizado.trim();
+        }
+
+        function obtenerEnlaceCategoria(tipo) {
+            return `categoria.html?tipo=${encodeURIComponent(tipo)}`;
+        }
+
+        function etiquetaCategoria(tipo, valorOriginal) {
+            if (tipo === 'taza') return 'Tazas';
+            if (tipo === 'puzzle') return 'Puzzles';
+            const etiqueta = String(valorOriginal || tipo).trim();
+            return etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1);
+        }
+
+        function convertirImagenProducto(enlace, tipo) {
+            const valor = String(enlace || '').trim();
+            if (!valor) return 'logo.JPG';
+            const archivo = valor.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+            if (archivo) return `https://drive.google.com/thumbnail?id=${archivo[1]}&sz=w1200`;
+            const consulta = valor.match(/[?&]id=([^&]+)/);
+            if (valor.includes('drive.google.com') && consulta) return `https://drive.google.com/thumbnail?id=${consulta[1]}&sz=w1200`;
+            if (/^https?:\/\//i.test(valor)) return valor;
+            if (/^(?:\.\.\/|\.\/|\/|[a-zA-Z0-9_-]+\/|[a-zA-Z0-9_.-]+$)/.test(valor)) return valor;
+            return 'logo.JPG';
+        }
+
+        function convertirEnlaceSheet(enlace) {
+            if (enlace.includes('format=xlsx')) return enlace;
+            if (enlace.includes('output=csv') || enlace.includes('tqx=out:csv')) return enlace;
+            const publicado = enlace.match(/\/spreadsheets\/d\/e\/([^/]+)\/pubhtml/);
+            if (publicado) {
+                const gidPublicado = (enlace.match(/[?&]gid=([0-9]+)/) || [])[1] || '0';
+                return `https://docs.google.com/spreadsheets/d/e/${publicado[1]}/pub?gid=${gidPublicado}&single=true&output=csv`;
+            }
+            const coincidencia = enlace.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (!coincidencia) throw new Error('El enlace no parece ser de Google Sheets.');
+            const gid = (enlace.match(/gid=([0-9]+)/) || [])[1] || '0';
+            return `https://docs.google.com/spreadsheets/d/${coincidencia[1]}/gviz/tq?tqx=out:csv&gid=${gid}`;
+        }
+
+        function extraerDatosCatalogo(libro) {
+            let productos = [];
+            let categorias = [];
+            libro.SheetNames.forEach(nombreHoja => {
+                const filas = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { defval: '' });
+                if (nombreHoja.trim().toLowerCase() === 'categorias') {
+                    categorias = filas;
+                    return;
+                }
+                if (!filas.some(fila => fila.Nombre)) return;
+                productos = productos.concat(filas.map(fila => ({
+                    ...fila,
+                    Codigo: fila.Codigo || fila.codigo || '',
+                    Tipo: fila.Tipo || fila.tipo || nombreHoja
+                })));
+            });
+            return { productos, categorias };
+        }
+
+        async function cargarCatalogoDesdeSheet() {
+            try {
+                const enlace = convertirEnlaceSheet(catalogoSheetPublicado);
+                const respuesta = await fetch(`${enlace}&cachebust=${Date.now()}`);
+                if (!respuesta.ok) throw new Error('Google Sheets no respondió correctamente.');
+                const datos = await respuesta.arrayBuffer();
+                const libro = XLSX.read(datos, { type: 'array' });
+                const datosCatalogo = extraerDatosCatalogo(libro);
+                if (!datosCatalogo.productos.length) throw new Error('No hay filas con columna Nombre.');
+                mostrarCatalogo(datosCatalogo.productos, datosCatalogo.categorias);
+            } catch (error) {
+                catalogoGrid.innerHTML = '';
+                console.error(error);
+            }
+        }
+
+        (window.cargarProductosDesdeSupabase ? Promise.all([cargarProductosDesdeSupabase(), window.cargarCategoriasDesdeSupabase ? cargarCategoriasDesdeSupabase() : Promise.resolve([])]).then(([productos, categorias]) => {
+            if (!productos.length) throw new Error('Supabase todavía no tiene productos.');
+            mostrarCatalogo(productos, categorias, true);
+        }).catch(() => cargarCatalogoDesdeSheet()) : cargarCatalogoDesdeSheet());
+    </script>
+    <script src="admin.js"></script>
+    
+</body>
+</html>

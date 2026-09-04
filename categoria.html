@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaNdeM | Categoría</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;700&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="supabase-public.js"></script>
+    <script src="catalogo.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container nav-container">
+            <a href="Index.html" class="logo"><img src="logo.jpg" alt="Logo Tandem Taller de Grabado"></a>
+            <button class="menu-toggle" id="menuToggle">☰</button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="./Index.html#hero">Inicio</a></li>
+                <li><a href="./Index.html#catalogo">Catálogo</a></li>
+                <li><a href="./Index.html#info">Info</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <main>
+        <section>
+            <div class="container">
+                <a href="./Index.html#catalogo" class="volver-link">&larr; Volver al catálogo</a>
+                <div class="producto-detalle-grid detalle-dinamico">
+                    <div class="producto-detalle-info">
+                        <p class="mono">[ CATÁLOGO ]</p>
+                        <h1 data-detalle-titulo>Categoría</h1>
+                        <p class="categoria-precio" data-detalle-precio></p>
+                        <p data-detalle-texto></p>
+                        <ul class="especificaciones" data-detalle-especificaciones></ul>
+                    </div>
+                </div>
+                <div class="detalle-productos-seccion">
+                    <h2>Últimas incorporaciones</h2>
+                    <div class="catalogo-grid detalle-productos" data-detalle-ultimas></div>
+                </div>
+                <div class="detalle-productos-seccion">
+                    <h2>Todos los trabajos</h2>
+                    <div class="catalogo-grid detalle-productos" data-detalle-todos></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="lightbox" class="lightbox" hidden>
+        <button id="lightboxClose" class="lightbox-close" aria-label="Cerrar">&times;</button>
+        <img id="lightboxImg" src="" alt="">
+    </div>
+
+    <script>
+        const menuToggle = document.getElementById('menuToggle');
+        const navLinks = document.getElementById('navLinks');
+        menuToggle.addEventListener('click', () => navLinks.classList.toggle('active'));
+        navLinks.querySelectorAll('a').forEach(enlace => enlace.addEventListener('click', () => navLinks.classList.remove('active')));
+        const tipo = new URLSearchParams(window.location.search).get('tipo');
+        if (tipo) {
+            const cargar = window.cargarProductosDesdeSupabase ? cargarDetalleDesdeSupabase(tipo) : cargarDetalleDesdeSheet(tipo);
+            cargar.catch(() => cargarDetalleDesdeSheet(tipo).catch(() => {}));
+        }
+    </script>
+</body>
+</html>
