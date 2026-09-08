@@ -60,7 +60,7 @@
         .admin-dropzone input { display: none; }
         .admin-image-preview { display: flex; flex-wrap: wrap; gap: 0.75rem; }
         .admin-image-preview span { display: grid; gap: 0.25rem; width: 110px; padding: 0.35rem; background: var(--canvas); font-size: 0.75rem; overflow: hidden; }
-        .admin-image-preview img { width: 100%; height: 90px; object-fit: cover; display: block; }
+        .admin-image-preview img, .admin-image-preview video { width: 100%; height: 90px; object-fit: cover; display: block; }
         .admin-image-preview small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .admin-status { min-height: 1.6em; margin: var(--space-sm) 0; padding: 0.7rem 0.9rem; border-left: 4px solid transparent; font-weight: 600; }
         .admin-status-success { color: #176b46; background: #e8f6ee; border-left-color: #2b9a68; }
@@ -71,11 +71,11 @@
         .admin-products-toolbar input, .admin-products-toolbar select { width: 100%; padding: 0.65rem; border: 1px solid var(--brand-dark); border-radius: 3px; font: inherit; color: var(--brand-dark); background: #fff; }
         .admin-results-count { min-height: 1.5em; margin: 0 0 var(--space-xs); color: var(--brand-blue); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; }
         .admin-product-row { display: grid; grid-template-columns: 90px 1fr 1.5fr 1fr auto 1.4fr auto; gap: 0.75rem; align-items: center; padding: var(--space-sm); background: #fff; border-top: 2px solid var(--brand-dark); }
-        .admin-product-row img { width: 90px; height: 90px; object-fit: cover; }
+        .admin-product-row img, .admin-product-row video { width: 90px; height: 90px; object-fit: cover; }
         .admin-product-row div { display: grid; gap: 0.5rem; }
         .admin-edit-images { align-content: start; }
         .admin-existing-images { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-        .admin-existing-images img { width: 42px; height: 42px; object-fit: cover; }
+        .admin-existing-images img, .admin-existing-images video { width: 42px; height: 42px; object-fit: cover; }
         .admin-image-picker { padding: 0.45rem; border: 1px dashed var(--brand-blue); text-align: center; cursor: pointer; font-weight: 600; }
         .admin-image-picker input { display: none; }
         .admin-product-actions { display: grid; gap: 0.5rem; }
@@ -548,6 +548,14 @@
             cursor: zoom-in;
         }
 
+        .producto-sheet-main-video {
+            width: 100%;
+            height: 280px;
+            object-fit: contain;
+            background: #ffffff;
+            display: block;
+        }
+
         .producto-sheet-thumbnails {
             display: flex;
             gap: 0.35rem;
@@ -566,7 +574,8 @@
             cursor: pointer;
         }
 
-        .producto-sheet-thumbnail img {
+        .producto-sheet-thumbnail img,
+        .producto-sheet-thumbnail video {
             width: 100%;
             height: 100%;
             object-fit: cover;

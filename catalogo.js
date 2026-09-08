@@ -112,6 +112,11 @@ function convertirImagenProducto(enlace, tipo) {
     return 'logo.JPG';
 }
 
+function esVideoUrl(enlace) {
+    const valor = String(enlace || '').trim().toLowerCase();
+    return /\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(valor) || /video/i.test(valor);
+}
+
 function prepararModalProducto() {
     if (document.getElementById('productoSheetModal')) return;
     const modal = document.createElement('div');
@@ -224,13 +229,32 @@ function crearTarjetasDeProductos(productos, contenedor) {
         const imagenes = listaDeImagenes(producto);
         const galeria = document.createElement('div');
         galeria.className = 'producto-sheet-gallery';
-        const imagenPrincipal = document.createElement('img');
-        imagenPrincipal.className = 'producto-sheet-main-image';
-        imagenPrincipal.src = imagenes[0];
-        imagenPrincipal.alt = producto.Nombre || 'Trabajo';
-        imagenPrincipal.onerror = () => { imagenPrincipal.onerror = null; imagenPrincipal.src = 'logo.JPG'; };
-        imagenPrincipal.addEventListener('click', () => abrirLightbox(imagenPrincipal));
-        galeria.appendChild(imagenPrincipal);
+
+        function crearMedia(enlace, principal = false) {
+            const video = esVideoUrl(enlace);
+            const media = document.createElement(video ? 'video' : 'img');
+            media.className = video ? (principal ? 'producto-sheet-main-video' : 'producto-sheet-thumbnail-video') : (principal ? 'producto-sheet-main-image' : 'producto-sheet-thumbnail-image');
+            media.src = enlace;
+            if (video) {
+                media.controls = principal;
+                media.muted = !principal;
+                media.playsInline = true;
+                media.preload = 'metadata';
+                media.setAttribute('playsinline', 'true');
+            } else {
+                media.alt = producto.Nombre || 'Trabajo';
+                media.loading = principal ? 'eager' : 'lazy';
+                media.onerror = () => { media.onerror = null; media.src = 'logo.JPG'; };
+            }
+            return media;
+        }
+
+        let mediaPrincipal = crearMedia(imagenes[0], true);
+        if (mediaPrincipal.tagName === 'IMG') {
+            mediaPrincipal.addEventListener('click', () => abrirLightbox(mediaPrincipal));
+        }
+        galeria.appendChild(mediaPrincipal);
+
         if (imagenes.length > 1) {
             const miniaturas = document.createElement('div');
             miniaturas.className = 'producto-sheet-thumbnails';
@@ -239,15 +263,16 @@ function crearTarjetasDeProductos(productos, contenedor) {
                 miniatura.type = 'button';
                 miniatura.className = 'producto-sheet-thumbnail';
                 miniatura.classList.toggle('producto-sheet-thumbnail-active', indice === 0);
-                miniatura.setAttribute('aria-label', `Ver imagen ${indice + 1}`);
-                const imagenMiniatura = document.createElement('img');
-                imagenMiniatura.src = enlace;
-                imagenMiniatura.alt = '';
-                imagenMiniatura.loading = 'lazy';
-                imagenMiniatura.onerror = () => { imagenMiniatura.onerror = null; imagenMiniatura.src = 'logo.JPG'; };
-                miniatura.appendChild(imagenMiniatura);
+                miniatura.setAttribute('aria-label', `Ver ${esVideoUrl(enlace) ? 'video' : 'imagen'} ${indice + 1}`);
+                const mediaMiniatura = crearMedia(enlace);
+                miniatura.appendChild(mediaMiniatura);
                 miniatura.addEventListener('click', () => {
-                    imagenPrincipal.src = enlace;
+                    const nuevoMedia = crearMedia(enlace, true);
+                    galeria.replaceChild(nuevoMedia, mediaPrincipal);
+                    mediaPrincipal = nuevoMedia;
+                    if (mediaPrincipal.tagName === 'IMG') {
+                        mediaPrincipal.addEventListener('click', () => abrirLightbox(mediaPrincipal));
+                    }
                     miniaturas.querySelectorAll('.producto-sheet-thumbnail').forEach(item => item.classList.remove('producto-sheet-thumbnail-active'));
                     miniatura.classList.add('producto-sheet-thumbnail-active');
                 });

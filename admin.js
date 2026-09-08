@@ -188,12 +188,12 @@
         productsCount.textContent = `${filteredProducts.length} de ${allProducts.length} trabajos`;
         productsList.innerHTML = filteredProducts.map(product => `
             <article class="admin-product-row" data-id="${product.id}" data-images="${escapeAttribute(JSON.stringify(product.imagenes || []))}">
-                <img src="${escapeAttribute(convertirImagenAdministrativa(product.imagenes?.[0]))}" alt="" onerror="this.onerror=null;this.src='logo.JPG'">
+                ${renderMediaMarkup(product.imagenes?.[0], { compact: true }) || `<img src="${escapeAttribute(convertirImagenAdministrativa(product.imagenes?.[0]))}" alt="" onerror="this.onerror=null;this.src='logo.JPG'">`}
                 <div><input data-field="codigo" value="${escapeAttribute(product.codigo || `PRD-${product.id.slice(0, 6).toUpperCase()}`)}" placeholder="Código único"><input data-field="nombre" value="${escapeAttribute(product.nombre)}"><select data-field="tipo">${categories.map(category => `<option value="${escapeAttribute(category)}" ${categoryKey(category) === categoryKey(product.tipo) ? 'selected' : ''}>${escapeText(category)}</option>`).join('')}<option value="__new__">Crear nueva categoría...</option></select><input data-field="nuevo-tipo" placeholder="Nueva categoría" hidden></div>
                 <textarea data-field="descripcion" rows="2">${escapeText(product.descripcion)}</textarea>
                 <input data-field="precio" value="${escapeAttribute(product.precio)}" placeholder="Precio">
                 <label><input data-field="activo" type="checkbox" ${product.activo ? 'checked' : ''}> Visible</label>
-                <div class="admin-edit-images"><strong>Fotos</strong><div class="admin-existing-images"></div><label class="admin-image-picker">Elegir fotos<input data-field="imagenes" type="file" accept="image/*" multiple></label><select data-field="modo-imagenes"><option value="agregar">Agregar a las actuales</option><option value="reemplazar">Reemplazar todas</option></select></div>
+                <div class="admin-edit-images"><strong>Fotos y videos</strong><div class="admin-existing-images"></div><label class="admin-image-picker">Elegir fotos o videos<input data-field="imagenes" type="file" accept="image/*,video/*" multiple></label><select data-field="modo-imagenes"><option value="agregar">Agregar a las actuales</option><option value="reemplazar">Reemplazar todas</option></select></div>
                 <div class="admin-product-actions"><button class="btn" data-action="save" type="button">Guardar</button><button class="btn btn-danger" data-action="delete" type="button">Eliminar</button></div>
             </article>`).join('');
         productsList.querySelectorAll('[data-id]').forEach(row => renderExistingImages(row));
@@ -202,7 +202,7 @@
     function renderExistingImages(row) {
         const container = row.querySelector('.admin-existing-images');
         const images = JSON.parse(row.dataset.images || '[]');
-        container.innerHTML = images.map(image => `<img src="${escapeAttribute(convertirImagenAdministrativa(image))}" alt="" onerror="this.onerror=null;this.src='logo.JPG'">`).join('');
+        container.innerHTML = images.map(image => renderMediaMarkup(image, { compact: true })).join('');
     }
 
     async function loadCategoryDetails() {
@@ -233,6 +233,24 @@
         return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function esVideoUrl(valor) {
+        const url = String(valor || '').trim().toLowerCase();
+        return /\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(url) || /video/i.test(url);
+    }
+
+    function esVideoFile(file) {
+        return file && (file.type?.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogg)$/i.test(file.name || ''));
+    }
+
+    function renderMediaMarkup(url, { compact = false } = {}) {
+        const valor = String(url || '').trim();
+        if (!valor) return '';
+        if (esVideoUrl(valor)) {
+            return `<video src="${escapeAttribute(valor)}" controls muted playsinline preload="metadata" ${compact ? 'class="admin-media-compact"' : ''}></video>`;
+        }
+        return `<img src="${escapeAttribute(convertirImagenAdministrativa(valor))}" alt="" onerror="this.onerror=null;this.src='logo.JPG'">`;
+    }
+
     function optimizarImagen(file) {
         return new Promise((resolve, reject) => {
             const imagen = new Image();
@@ -261,11 +279,16 @@
     async function uploadImages(files) {
         const urls = [];
         for (const file of files) {
-            const imagenOptimizada = await optimizarImagen(file);
-            const path = `${crypto.randomUUID()}-${imagenOptimizada.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
-            const upload = await client.storage.from('product-images').upload(path, imagenOptimizada, { upsert: false, contentType: imagenOptimizada.type });
+            const esVideo = esVideoFile(file);
+            const bucketName = esVideo ? 'product-videos' : 'product-images';
+            const archivo = esVideo ? file : await optimizarImagen(file);
+            const path = `${crypto.randomUUID()}-${archivo.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+            const upload = await client.storage.from(bucketName).upload(path, archivo, {
+                upsert: false,
+                contentType: archivo.type || (esVideo ? 'video/mp4' : 'image/webp')
+            });
             if (upload.error) throw upload.error;
-            urls.push(client.storage.from('product-images').getPublicUrl(path).data.publicUrl);
+            urls.push(client.storage.from(bucketName).getPublicUrl(path).data.publicUrl);
         }
         return urls;
     }
@@ -274,14 +297,25 @@
         imagePreview.innerHTML = '';
         [...imageInput.files].forEach(file => {
             const preview = document.createElement('span');
-            const imagen = document.createElement('img');
-            imagen.src = URL.createObjectURL(file);
-            imagen.alt = file.name;
-            imagen.onload = () => URL.revokeObjectURL(imagen.src);
-            preview.appendChild(imagen);
             const nombre = document.createElement('small');
             nombre.textContent = file.name;
             preview.appendChild(nombre);
+            if (esVideoFile(file)) {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(file);
+                video.controls = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.preload = 'metadata';
+                video.onloadeddata = () => URL.revokeObjectURL(video.src);
+                preview.appendChild(video);
+            } else {
+                const imagen = document.createElement('img');
+                imagen.src = URL.createObjectURL(file);
+                imagen.alt = file.name;
+                imagen.onload = () => URL.revokeObjectURL(imagen.src);
+                preview.appendChild(imagen);
+            }
             imagePreview.appendChild(preview);
         });
     }
