@@ -13,6 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <script src="supabase-public.js"></script>
+    <script src="sync-status.js"></script>
 
 </head>
 <body>
@@ -111,6 +112,7 @@
     <section class="admin-inline admin-overlay" id="adminAccess" hidden>
         <div class="admin-shell">
             <button class="admin-overlay-close" id="adminOverlayClose" type="button" aria-label="Cerrar administración">&times;</button>
+            <div id="syncStatusBanner" class="sync-banner" aria-live="polite"></div>
             <section class="admin-login" id="loginView">
                 <p class="mono">[ PANEL PRIVADO ]</p>
                 <h1>Administrar catálogo</h1>
