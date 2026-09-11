@@ -84,8 +84,9 @@
         .admin-inline { border-top: 2px solid var(--brand-dark); background: #ffffff; }
         .admin-inline[hidden] { display: none; }
         .admin-overlay { position: fixed; inset: 0; z-index: 20; overflow-y: auto; border-top: 0; }
-        .admin-overlay .admin-shell { position: relative; min-height: 100vh; }
-        .admin-overlay-close { position: absolute; top: var(--space-sm); right: var(--space-sm); width: 2.5rem; height: 2.5rem; border: 2px solid var(--brand-dark); background: #ffffff; color: var(--brand-dark); font-size: 1.8rem; line-height: 1; cursor: pointer; }
+        .admin-overlay .admin-shell { position: relative; min-height: 100vh; padding-top: calc(var(--space-lg) + 2.5rem); }
+        .admin-overlay-close { position: fixed; top: var(--space-sm); right: var(--space-sm); z-index: 30; width: 2.5rem; height: 2.5rem; border: 2px solid var(--brand-dark); background: #ffffff; color: var(--brand-dark); font-size: 1.8rem; line-height: 1; cursor: pointer; }
+        .admin-overlay-back { display: inline-flex; align-items: center; justify-content: center; padding: 0.55rem 0.9rem; border: 2px solid var(--brand-dark); background: var(--brand-blue); color: #ffffff; font-family: 'Anton', sans-serif; text-decoration: none; text-transform: uppercase; box-shadow: 3px 3px 0px var(--brand-dark); cursor: pointer; }
         .admin-open { overflow: hidden; }
         .admin-login { max-width: 500px; margin: 8vh auto 0; }
         .admin-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-sm); margin-bottom: var(--space-md); }
@@ -132,7 +133,7 @@
         .admin-product-actions { display: grid; gap: 0.5rem; }
         .btn-danger { background-color: #a32121; color: #ffffff; border-color: #a32121; }
         @media (max-width: 800px) { .admin-products-toolbar { grid-template-columns: 1fr 1fr; } .admin-product-row { grid-template-columns: 70px 1fr; } .admin-product-row img { width: 70px; height: 70px; grid-row: span 2; } .admin-product-row textarea, .admin-product-row input[data-field="precio"], .admin-product-row label, .admin-product-row button { grid-column: 1 / -1; } }
-        @media (max-width: 500px) { .admin-products-toolbar { grid-template-columns: 1fr; } }
+        @media (max-width: 500px) { .admin-products-toolbar { grid-template-columns: 1fr; } .admin-overlay .admin-shell { padding-top: 4.25rem; } .admin-overlay-close { top: 0.75rem; right: 0.75rem; width: 2.25rem; height: 2.25rem; font-size: 1.5rem; } .admin-overlay-back { padding: 0.5rem 0.7rem; font-size: 0.9rem; } }
 
         /* =========================================
            2. TIPOGRAFÍA Y TEXTOS

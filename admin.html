@@ -38,6 +38,7 @@
             <nav class="admin-tabs" aria-label="Secciones de administración">
                 <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
                 <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
+                <button class="admin-tab" type="button" data-admin-tab="inicio" aria-selected="false">Página principal</button>
             </nav>
             <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
                 <form id="productForm" class="admin-form admin-product-form">
@@ -74,6 +75,11 @@
                 <h2>Textos de categorías</h2>
                 <p>Estos textos se muestran en la portada y arriba de cada categoría.</p>
                 <div class="admin-category-list" id="categoryList"></div>
+            </section>
+            <section class="admin-home-editor admin-panel" data-admin-panel="inicio" hidden>
+                <h2>Página principal</h2>
+                <p>Controlá el título del sitio, el texto del catálogo, la sección “Detrás del Taller” y las fotos de Mabel.</p>
+                <div id="homeConfigEditor"></div>
             </section>
         </section>
     </main>

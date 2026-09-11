@@ -20,6 +20,19 @@
     const productVisibilityFilter = document.getElementById('productVisibilityFilter');
     const productSort = document.getElementById('productSort');
     const productsCount = document.getElementById('productsCount');
+    const homeConfigEditor = document.getElementById('homeConfigEditor');
+    const HOME_CONFIG_STORAGE_KEY = 'tandem_home_config';
+    const HOME_CONFIG_DEFAULTS = {
+        page_title: 'TaNdeM | Taller de Estampado',
+        hero_mono: '[ TALLER DE GRABADO Y ESTAMPADO ]',
+        hero_title: 'DISEÑO Y SERIGRAFÍA',
+        hero_description: 'Materializamos tus ideas en prendas de alta calidad. Directo del taller a tus manos.',
+        catalog_title: 'Productos',
+        catalog_text: 'Estampamos, remeras, buzos tazas.Remeras , buzos y Camisetas de Argentina Futbol Selección. Bordadas . Sublimadas Intervenidas o sin.Consultanos.',
+        about_title: 'Detrás del Taller',
+        about_content: '<p>¡Hola! Soy <strong>Mabel Calabrese</strong>, Profesora en Grabado y Arte Impreso, creadora y emprendedora de este espacio.</p><p><strong>TaNdeM Taller de Grabado, Estampados y Más</strong> es mi emprendimiento principal; un taller de producción dedicado al trabajo manual, el diseño y el cuidado por los detalles en cada pieza.</p><p>Además, llevo adelante con mucho orgullo el proyecto <strong>TaNdeM Taller Creativo Terapéutico</strong>, un espacio de expresión y aprendizaje orientado especialmente a adolescentes, jóvenes y adultos dentro del espectro autista.</p>',
+        mabel_photos: ['Mabel1.jpeg', 'Mabel2.jpeg']
+    };
 
     if (!configReady) {
         loginStatus.textContent = 'Falta configurar la conexión con Supabase.';
@@ -114,6 +127,20 @@
         element.classList.toggle('admin-status-success', !error && Boolean(message));
     }
 
+    function formatSupabaseError(error) {
+        const message = error && typeof error === 'object' ? error.message || String(error) : String(error || '');
+
+        if (/violates row-level security policy/i.test(message)) {
+            return 'Supabase está bloqueando la escritura por políticas RLS. Revisá las políticas de la tabla productos y, si estás subiendo videos, también el bucket product-videos para permitir insertar y actualizar con sesión autenticada.';
+        }
+
+        if (/policy/i.test(message) && /storage|bucket/i.test(message)) {
+            return 'Supabase está bloqueando el acceso al bucket de almacenamiento. Revisá las políticas del bucket product-images o product-videos para permitir subir archivos con la sesión autenticada.';
+        }
+
+        return message || 'No se pudo completar la operación.';
+    }
+
     function setButtonState(button, busyText) {
         const originalText = button.textContent;
         button.disabled = true;
@@ -135,12 +162,109 @@
         };
     }
 
-    function showDashboard() {
+    function normalizeHomeConfig(config = {}) {
+        const sanitizedConfig = {
+            ...(config || {})
+        };
+        const legacyPhotos = [sanitizedConfig.mabel_1, sanitizedConfig.mabel_2].filter(Boolean).map(String);
+        const mabelPhotos = Array.isArray(sanitizedConfig.mabel_photos)
+            ? sanitizedConfig.mabel_photos.filter(Boolean).map(String)
+            : legacyPhotos;
+
+        return {
+            ...HOME_CONFIG_DEFAULTS,
+            ...sanitizedConfig,
+            mabel_photos: mabelPhotos.length ? mabelPhotos : HOME_CONFIG_DEFAULTS.mabel_photos
+        };
+    }
+
+    function readHomeConfig() {
+        try {
+            const rawValue = window.localStorage.getItem(HOME_CONFIG_STORAGE_KEY);
+            if (!rawValue) return normalizeHomeConfig();
+            return normalizeHomeConfig(JSON.parse(rawValue));
+        } catch (error) {
+            return normalizeHomeConfig();
+        }
+    }
+
+    function writeHomeConfig(config) {
+        try {
+            window.localStorage.setItem(HOME_CONFIG_STORAGE_KEY, JSON.stringify(normalizeHomeConfig(config)));
+        } catch (error) {
+            // Ignorar errores de almacenamiento local.
+        }
+    }
+
+    function renderHomeConfigEditor() {
+        if (!homeConfigEditor) return;
+        const config = readHomeConfig();
+        homeConfigEditor.innerHTML = `
+            <form id="homeConfigForm" class="admin-form">
+                <label for="homeConfigPageTitle">Título del sitio</label>
+                <input id="homeConfigPageTitle" value="${escapeAttribute(config.page_title)}" placeholder="Ej: TaNdeM | Taller de Estampado">
+
+                <label for="homeConfigHeroMono">Texto pequeño del hero</label>
+                <input id="homeConfigHeroMono" value="${escapeAttribute(config.hero_mono)}" placeholder="Ej: [ TALLER DE GRABADO Y ESTAMPADO ]">
+
+                <label for="homeConfigHeroTitle">Título principal del hero</label>
+                <input id="homeConfigHeroTitle" value="${escapeAttribute(config.hero_title)}" placeholder="Ej: DISEÑO Y SERIGRAFÍA">
+
+                <label for="homeConfigHeroDescription">Descripción del hero</label>
+                <textarea id="homeConfigHeroDescription" rows="3" placeholder="Descripción principal de la portada">${escapeText(config.hero_description)}</textarea>
+
+                <label for="homeConfigCatalogTitle">Título de la sección catálogo</label>
+                <input id="homeConfigCatalogTitle" value="${escapeAttribute(config.catalog_title)}" placeholder="Ej: Productos">
+
+                <label for="homeConfigCatalogText">Texto que se muestra en el catálogo</label>
+                <textarea id="homeConfigCatalogText" rows="3" placeholder="Texto breve para la sección de catálogo">${escapeText(config.catalog_text)}</textarea>
+
+                <label for="homeConfigAboutTitle">Título de “Detrás del Taller”</label>
+                <input id="homeConfigAboutTitle" value="${escapeAttribute(config.about_title)}" placeholder="Ej: Detrás del Taller">
+
+                <label for="homeConfigAboutContent">Contenido de “Detrás del Taller”</label>
+                <textarea id="homeConfigAboutContent" rows="6" placeholder="Podés usar HTML básico para dar formato.">${escapeText(config.about_content)}</textarea>
+
+                <label for="homeConfigMabelPhotos">Fotos de Mabel</label>
+                <input id="homeConfigMabelPhotos" type="file" accept="image/*" multiple>
+                <small>Podés agregar todas las fotos que quieras. La primera será la principal para la portada.</small>
+
+                <div class="admin-home-photo-preview">
+                    ${config.mabel_photos.map((photo, index) => `
+                        <div>
+                            <small>Foto ${index + 1}</small>
+                            <img src="${escapeAttribute(convertirImagenAdministrativa(photo))}" alt="Mabel foto ${index + 1}" onerror="this.onerror=null;this.src='logo.JPG'">
+                        </div>
+                    `).join('')}
+                </div>
+
+                <button class="btn btn-accent" type="submit">Guardar contenido</button>
+            </form>
+        `;
+    }
+
+    async function loadHomeConfigForAdmin() {
+        try {
+            if (window.cargarConfiguracionPaginaPrincipalDesdeSupabase) {
+                const remoteConfig = await window.cargarConfiguracionPaginaPrincipalDesdeSupabase();
+                if (remoteConfig) {
+                    writeHomeConfig(remoteConfig);
+                    renderHomeConfigEditor();
+                }
+            }
+        } catch (error) {
+            setStatus(dashboardStatus, 'No se pudo sincronizar la configuración de la página principal desde Supabase.', true);
+        }
+    }
+
+    async function showDashboard() {
         loginView.hidden = true;
         dashboardView.hidden = false;
         const adminAccess = document.getElementById('adminAccess');
         if (adminAccess) adminAccess.hidden = false;
         document.body.classList.add('admin-open');
+        renderHomeConfigEditor();
+        await loadHomeConfigForAdmin();
         loadProducts();
         resetInactivityTimer();
     }
@@ -326,15 +450,77 @@
         client = createClient(Boolean(rememberSession && rememberSession.checked));
         const { error } = await client.auth.signInWithPassword({ email: email.value, password: password.value });
         if (error) {
-            const mensaje = error.status === 0 || /fetch|network|gateway|502|503/i.test(error.message)
-                ? 'Supabase no está respondiendo. Verificá que el proyecto esté activo y volvé a intentar.'
-                : error.status === 400
+            const esProblemaDeConexion = error.status === 0 || /fetch|network|gateway|502|503|timeout|load failed|failed to fetch/i.test(error.message);
+            const esCredencialInvalida = error.status === 400 || /invalid login credentials|user not found|email not confirmed/i.test(error.message);
+
+            const mensaje = esProblemaDeConexion
+                ? 'No se pudo iniciar sesión porque la base de datos o el servicio de autenticación de Supabase no está disponible en este momento. Verificá que el proyecto esté activo y volvé a intentar.'
+                : esCredencialInvalida
                     ? 'El correo o la contraseña no son correctos.'
-                    : `No se pudo ingresar: ${error.message}`;
+                    : `No se pudo ingresar porque la base de datos o el servicio de autenticación no respondió correctamente. Detalle: ${error.message}`;
+
             setStatus(loginStatus, mensaje, true);
             return;
         }
         showDashboard();
+    });
+
+    homeConfigEditor.addEventListener('submit', async event => {
+        if (!event.target || event.target.id !== 'homeConfigForm') return;
+        event.preventDefault();
+        const form = event.target;
+        const restoreButton = setButtonState(form.querySelector('button[type="submit"]'), 'Guardando...');
+        let saved = false;
+        setStatus(dashboardStatus, 'Guardando contenido...');
+
+        try {
+            const config = readHomeConfig();
+            const nextConfig = {
+                page_title: form.querySelector('#homeConfigPageTitle').value.trim() || HOME_CONFIG_DEFAULTS.page_title,
+                hero_mono: form.querySelector('#homeConfigHeroMono').value.trim() || HOME_CONFIG_DEFAULTS.hero_mono,
+                hero_title: form.querySelector('#homeConfigHeroTitle').value.trim() || HOME_CONFIG_DEFAULTS.hero_title,
+                hero_description: form.querySelector('#homeConfigHeroDescription').value.trim() || HOME_CONFIG_DEFAULTS.hero_description,
+                catalog_title: form.querySelector('#homeConfigCatalogTitle').value.trim() || HOME_CONFIG_DEFAULTS.catalog_title,
+                catalog_text: form.querySelector('#homeConfigCatalogText').value.trim() || HOME_CONFIG_DEFAULTS.catalog_text,
+                about_title: form.querySelector('#homeConfigAboutTitle').value.trim() || HOME_CONFIG_DEFAULTS.about_title,
+                about_content: form.querySelector('#homeConfigAboutContent').value.trim() || HOME_CONFIG_DEFAULTS.about_content,
+                mabel_photos: [...(config.mabel_photos || [])]
+            };
+
+            const newMabelPhotos = form.querySelector('#homeConfigMabelPhotos').files;
+            if (newMabelPhotos && newMabelPhotos.length) {
+                const uploaded = await uploadImages(newMabelPhotos);
+                nextConfig.mabel_photos = [...nextConfig.mabel_photos, ...uploaded];
+            }
+
+            writeHomeConfig(nextConfig);
+            try {
+                await client.from('pagina_principal').upsert({
+                    id: 'inicio',
+                    titulo_pagina: nextConfig.page_title,
+                    hero_mono: nextConfig.hero_mono,
+                    hero_titulo: nextConfig.hero_title,
+                    hero_descripcion: nextConfig.hero_description,
+                    catalogo_titulo: nextConfig.catalog_title,
+                    catalogo_texto: nextConfig.catalog_text,
+                    acerca_titulo: nextConfig.about_title,
+                    acerca_contenido: nextConfig.about_content,
+                    foto_mabel_1: nextConfig.mabel_photos[0] || '',
+                    foto_mabel_2: nextConfig.mabel_photos[1] || '',
+                    foto_mabel_galeria: JSON.stringify(nextConfig.mabel_photos)
+                });
+            } catch (error) {
+                setStatus(dashboardStatus, 'Se guardó localmente en este navegador. Para sincronizar con Supabase, creá la tabla pagina_principal con esas columnas.', true);
+            }
+
+            saved = true;
+            renderHomeConfigEditor();
+            setStatus(dashboardStatus, 'Contenido de la página principal guardado.');
+        } catch (error) {
+            setStatus(dashboardStatus, formatSupabaseError(error), true);
+        } finally {
+            restoreButton(saved ? 'Guardado' : '');
+        }
     });
 
     productForm.addEventListener('submit', async event => {
@@ -356,7 +542,7 @@
             setStatus(dashboardStatus, 'Trabajo guardado.');
             loadProducts();
         } catch (error) {
-            setStatus(dashboardStatus, error.message, true);
+            setStatus(dashboardStatus, formatSupabaseError(error), true);
         } finally {
             restoreButton(saved ? 'Guardado' : '');
         }
@@ -391,7 +577,7 @@
             const { error } = await client.from('productos').delete().eq('id', row.dataset.id);
             if (error) {
                 restoreButton();
-                setStatus(dashboardStatus, error.message, true);
+                setStatus(dashboardStatus, formatSupabaseError(error), true);
                 return;
             }
             allProducts = allProducts.filter(product => product.id !== row.dataset.id);
@@ -437,7 +623,7 @@
             renderExistingImages(row);
         }
         restoreButton(error ? '' : 'Guardado');
-        setStatus(dashboardStatus, error ? error.message : 'Cambios guardados.', Boolean(error));
+        setStatus(dashboardStatus, error ? formatSupabaseError(error) : 'Cambios guardados.', Boolean(error));
     });
 
     productsList.addEventListener('change', event => {

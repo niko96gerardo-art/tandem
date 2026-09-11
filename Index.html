@@ -38,9 +38,9 @@
     <main>
         <section id="hero" class="hero">
             <div class="container">
-                <p class="mono">[ TALLER DE GRABADO Y ESTAMPADO ]</p>
-                <h1 class="layered-text">DISEÑO Y SERIGRAFÍA</h1>
-                <p>Materializamos tus ideas en prendas de alta calidad. Directo del taller a tus manos.</p>
+                <p class="mono" id="homeHeroMono">[ TALLER DE GRABADO Y ESTAMPADO ]</p>
+                <h1 class="layered-text" id="homeHeroTitle">DISEÑO Y SERIGRAFÍA</h1>
+                <p id="homeHeroDescription">Materializamos tus ideas en prendas de alta calidad. Directo del taller a tus manos.</p>
                 <a href="#catalogo" class="btn">Ver Catálogo</a>
             </div>
         </section>
@@ -52,12 +52,14 @@
                     <img id="fotoMabel" src="Mabel1.jpeg" alt="Mabel Calabrese, creadora de TaNdeM" data-foto1="Mabel1.jpeg" data-foto2="Mabel2.jpeg">
                 </div>
                 <div class="nosotros-texto">
-                    <h2>Detrás del Taller</h2>
-                    <p>¡Hola! Soy <strong>Mabel Calabrese</strong>, Profesora en Grabado y Arte Impreso, creadora y emprendedora de este espacio.</p>
-                    
-                    <p><strong>TaNdeM Taller de Grabado, Estampados y Más</strong> es mi emprendimiento principal; un taller de producción dedicado al trabajo manual, el diseño y el cuidado por los detalles en cada pieza.</p>
+                    <h2 id="homeAboutTitle">Detrás del Taller</h2>
+                    <div id="homeAboutContent">
+                        <p>¡Hola! Soy <strong>Mabel Calabrese</strong>, Profesora en Grabado y Arte Impreso, creadora y emprendedora de este espacio.</p>
+                        
+                        <p><strong>TaNdeM Taller de Grabado, Estampados y Más</strong> es mi emprendimiento principal; un taller de producción dedicado al trabajo manual, el diseño y el cuidado por los detalles en cada pieza.</p>
 
-                    <p>Además, llevo adelante con mucho orgullo el proyecto <strong>TaNdeM Taller Creativo Terapéutico</strong>, un espacio de expresión y aprendizaje orientado especialmente a adolescentes, jóvenes y adultos dentro del espectro autista.</p>
+                        <p>Además, llevo adelante con mucho orgullo el proyecto <strong>TaNdeM Taller Creativo Terapéutico</strong>, un espacio de expresión y aprendizaje orientado especialmente a adolescentes, jóvenes y adultos dentro del espectro autista.</p>
+                    </div>
                     
                     <br>
                     <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1rem;">
@@ -79,8 +81,8 @@
         <!-- CATÁLOGO -->
         <section id="catalogo">
             <div class="container">
-                <h2>Productos</h2>
-                <p class="mono">Estampamos, remeras, buzos tazas.Remeras , buzos y Camisetas de Argentina Futbol Selección. Bordadas . Sublimadas Intervenidas o sin.Consultanos.</p>
+                <h2 id="homeCatalogTitle">Productos</h2>
+                <p class="mono" id="homeCatalogText">Estampamos, remeras, buzos tazas.Remeras , buzos y Camisetas de Argentina Futbol Selección. Bordadas . Sublimadas Intervenidas o sin.Consultanos.</p>
                 <div class="catalogo-grid catalogo-categorias" id="catalogoGrid"></div>
             </div>
         </section>
@@ -111,6 +113,7 @@
 
     <section class="admin-inline admin-overlay" id="adminAccess" hidden>
         <div class="admin-shell">
+            <button class="admin-overlay-back" id="adminBackButton" type="button">Volver al catálogo</button>
             <button class="admin-overlay-close" id="adminOverlayClose" type="button" aria-label="Cerrar administración">&times;</button>
             <div id="syncStatusBanner" class="sync-banner" aria-live="polite"></div>
             <section class="admin-login" id="loginView">
@@ -129,6 +132,7 @@
                 <nav class="admin-tabs" aria-label="Secciones de administración">
                     <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
                     <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
+                    <button class="admin-tab" type="button" data-admin-tab="inicio" aria-selected="false">Página principal</button>
                 </nav>
                 <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
                     <form id="productForm" class="admin-form admin-product-form">
@@ -157,6 +161,11 @@
                     <h2>Textos de categorías</h2>
                     <p>Estos textos se muestran en la portada y arriba de cada categoría.</p>
                     <div class="admin-category-list" id="categoryList"></div>
+                </section>
+                <section class="admin-home-editor admin-panel" data-admin-panel="inicio" hidden>
+                    <h2>Página principal</h2>
+                    <p>Controlá el título del sitio, el texto del catálogo, la sección “Detrás del Taller” y las fotos de Mabel.</p>
+                    <div id="homeConfigEditor"></div>
                 </section>
             </section>
         </div>
@@ -189,6 +198,95 @@
 
     <!-- JAVASCRIPT BÁSICO PARA EL MENÚ MÓVIL -->
     <script>
+        (function () {
+            const HOME_CONFIG_STORAGE_KEY = 'tandem_home_config';
+            const DEFAULT_CONFIG = {
+                page_title: 'TaNdeM | Taller de Estampado',
+                hero_mono: '[ TALLER DE GRABADO Y ESTAMPADO ]',
+                hero_title: 'DISEÑO Y SERIGRAFÍA',
+                hero_description: 'Materializamos tus ideas en prendas de alta calidad. Directo del taller a tus manos.',
+                catalog_title: 'Productos',
+                catalog_text: 'Estampamos, remeras, buzos tazas.Remeras , buzos y Camisetas de Argentina Futbol Selección. Bordadas . Sublimadas Intervenidas o sin.Consultanos.',
+                about_title: 'Detrás del Taller',
+                about_content: '<p>¡Hola! Soy <strong>Mabel Calabrese</strong>, Profesora en Grabado y Arte Impreso, creadora y emprendedora de este espacio.</p><p><strong>TaNdeM Taller de Grabado, Estampados y Más</strong> es mi emprendimiento principal; un taller de producción dedicado al trabajo manual, el diseño y el cuidado por los detalles en cada pieza.</p><p>Además, llevo adelante con mucho orgullo el proyecto <strong>TaNdeM Taller Creativo Terapéutico</strong>, un espacio de expresión y aprendizaje orientado especialmente a adolescentes, jóvenes y adultos dentro del espectro autista.</p>',
+                mabel_photos: ['Mabel1.jpeg', 'Mabel2.jpeg']
+            };
+
+            function normalizeHomeConfig(config = {}) {
+                const rawConfig = config || {};
+                const legacyPhotos = [rawConfig.mabel_1, rawConfig.mabel_2].filter(Boolean).map(String);
+                const mabelPhotos = Array.isArray(rawConfig.mabel_photos)
+                    ? rawConfig.mabel_photos.filter(Boolean).map(String)
+                    : legacyPhotos;
+
+                return {
+                    ...DEFAULT_CONFIG,
+                    ...rawConfig,
+                    mabel_photos: mabelPhotos.length ? mabelPhotos : DEFAULT_CONFIG.mabel_photos
+                };
+            }
+
+            function readHomeConfig() {
+                try {
+                    const rawValue = window.localStorage.getItem(HOME_CONFIG_STORAGE_KEY);
+                    if (!rawValue) return normalizeHomeConfig();
+                    return normalizeHomeConfig(JSON.parse(rawValue));
+                } catch (error) {
+                    return normalizeHomeConfig();
+                }
+            }
+
+            function applyHomeConfig(config) {
+                const normalized = normalizeHomeConfig(config);
+                document.title = normalized.page_title;
+                const heroMono = document.getElementById('homeHeroMono');
+                const heroTitle = document.getElementById('homeHeroTitle');
+                const heroDescription = document.getElementById('homeHeroDescription');
+                const catalogTitle = document.getElementById('homeCatalogTitle');
+                const catalogText = document.getElementById('homeCatalogText');
+                const aboutTitle = document.getElementById('homeAboutTitle');
+                const aboutContent = document.getElementById('homeAboutContent');
+                const fotoMabel = document.getElementById('fotoMabel');
+
+                if (heroMono) heroMono.textContent = normalized.hero_mono;
+                if (heroTitle) heroTitle.textContent = normalized.hero_title;
+                if (heroDescription) heroDescription.textContent = normalized.hero_description;
+                if (catalogTitle) catalogTitle.textContent = normalized.catalog_title;
+                if (catalogText) catalogText.textContent = normalized.catalog_text;
+                if (aboutTitle) aboutTitle.textContent = normalized.about_title;
+                if (aboutContent) aboutContent.innerHTML = normalized.about_content || DEFAULT_CONFIG.about_content;
+                if (fotoMabel) {
+                    const fotos = normalized.mabel_photos || DEFAULT_CONFIG.mabel_photos;
+                    fotoMabel.dataset.mabelPhotos = JSON.stringify(fotos);
+                    fotoMabel.dataset.currentIndex = '0';
+                    fotoMabel.src = fotos[0] || DEFAULT_CONFIG.mabel_photos[0];
+                }
+            }
+
+            async function loadHomeConfig() {
+                try {
+                    if (window.cargarConfiguracionPaginaPrincipalDesdeSupabase) {
+                        const remoteConfig = await window.cargarConfiguracionPaginaPrincipalDesdeSupabase();
+                        if (remoteConfig) {
+                            applyHomeConfig(remoteConfig);
+                            try {
+                                window.localStorage.setItem(HOME_CONFIG_STORAGE_KEY, JSON.stringify(remoteConfig));
+                            } catch (error) {
+                                // Ignorar errores de almacenamiento local.
+                            }
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('No se pudo cargar la configuración remota de la página principal.', error);
+                }
+                applyHomeConfig(readHomeConfig());
+            }
+
+            loadHomeConfig();
+            window.aplicarConfiguracionPaginaPrincipal = applyHomeConfig;
+        }());
+
         const menuToggle = document.getElementById('menuToggle');
         const navLinks = document.getElementById('navLinks');
 
@@ -196,14 +294,18 @@
             navLinks.classList.toggle('active');
         });
         navLinks.querySelectorAll('a').forEach(enlace => enlace.addEventListener('click', () => navLinks.classList.remove('active')));
+        const adminAccess = document.getElementById('adminAccess');
+        const closeAdminAccess = () => {
+            adminAccess.hidden = true;
+            document.body.classList.remove('admin-open');
+        };
+
         document.getElementById('adminAccessLink').addEventListener('click', () => {
-            document.getElementById('adminAccess').hidden = false;
+            adminAccess.hidden = false;
             document.body.classList.add('admin-open');
         });
-        document.getElementById('adminOverlayClose').addEventListener('click', () => {
-            document.getElementById('adminAccess').hidden = true;
-            document.body.classList.remove('admin-open');
-        });
+        document.getElementById('adminOverlayClose').addEventListener('click', closeAdminAccess);
+        document.getElementById('adminBackButton').addEventListener('click', closeAdminAccess);
         // =========================================
         // SCRIPT PARA LA VENTANA MODAL DE PRODUCTOS
         // =========================================
@@ -236,8 +338,16 @@
         // FOTO DE MABEL: alterna entre las dos fotos al hacer click
         const fotoMabel = document.getElementById('fotoMabel');
         fotoMabel.addEventListener('click', () => {
-            const mostrandoPrimera = fotoMabel.src.includes(fotoMabel.dataset.foto1.split('/').pop());
-            fotoMabel.src = mostrandoPrimera ? fotoMabel.dataset.foto2 : fotoMabel.dataset.foto1;
+            try {
+                const fotos = JSON.parse(fotoMabel.dataset.mabelPhotos || '[]');
+                if (!fotos.length) return;
+                const indiceActual = Number(fotoMabel.dataset.currentIndex || 0);
+                const siguienteIndice = (indiceActual + 1) % fotos.length;
+                fotoMabel.dataset.currentIndex = String(siguienteIndice);
+                fotoMabel.src = fotos[siguienteIndice];
+            } catch (error) {
+                // Ignorar errores de parsing.
+            }
         });
 
         const catalogoGrid = document.getElementById('catalogoGrid');
