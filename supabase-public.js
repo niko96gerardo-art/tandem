@@ -3,20 +3,62 @@
     if (!ready || !window.supabase) return;
 
     const client = window.supabase.createClient(window.TANDEM_SUPABASE_URL, window.TANDEM_SUPABASE_ANON_KEY);
+    const PRODUCT_COLLECTIONS_STORAGE_KEY = 'tandem_product_collections';
+
+    function normalizeCollections(value) {
+        if (Array.isArray(value)) {
+            return value.map(item => String(item || '').trim()).filter(Boolean);
+        }
+        if (typeof value !== 'string') return [];
+        return value.split(/[;,]/).map(item => item.trim()).filter(Boolean);
+    }
+
+    function normalizeImages(value) {
+        if (Array.isArray(value)) {
+            return value.filter(Boolean).map(item => String(item || '').trim()).filter(Boolean);
+        }
+        if (typeof value === 'string') {
+            return value.split('|').map(item => item.trim()).filter(Boolean);
+        }
+        return [];
+    }
+
+    function readProductCollections() {
+        try {
+            const rawValue = window.localStorage.getItem(PRODUCT_COLLECTIONS_STORAGE_KEY);
+            if (!rawValue) return {};
+            const parsed = JSON.parse(rawValue);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
 
     window.cargarProductosDesdeSupabase = async function () {
         const { data, error } = await client.from('productos').select('*').eq('activo', true).order('orden').order('creado_en', { ascending: false });
         if (error) throw error;
-        return data.map(producto => ({
-            Codigo: producto.codigo,
-            Nombre: producto.nombre,
-            Descripcion: producto.descripcion,
-            Precio: producto.precio,
-            Tipo: producto.tipo,
-            Imagenes: producto.imagenes.join('|'),
-            Imagen: producto.imagenes[0] || '',
-            Activo: producto.activo
-        }));
+
+        const storedCollections = readProductCollections();
+
+        return data.map(producto => {
+            const imagenes = normalizeImages(producto.imagenes);
+            const coleccionesLocales = storedCollections[producto.id] || [];
+            const listaColecciones = normalizeCollections(producto.colecciones || producto.collections || coleccionesLocales);
+
+            return {
+                Id: producto.id,
+                Codigo: producto.codigo,
+                Nombre: producto.nombre,
+                Descripcion: producto.descripcion,
+                Precio: producto.precio,
+                Tipo: producto.tipo,
+                Imagenes: imagenes.join('|'),
+                Imagen: imagenes[0] || '',
+                Activo: producto.activo,
+                Destacado: Boolean(producto.destacado || producto.favorito),
+                Colecciones: listaColecciones.join(', ')
+            };
+        });
     };
 
     window.cargarCategoriasDesdeSupabase = async function () {

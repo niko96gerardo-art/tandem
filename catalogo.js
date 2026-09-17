@@ -326,6 +326,68 @@ function mostrarTarjetasDeProductos(productos, nuevosPrimero = false) {
     crearTarjetasDeProductos(anteriores, document.querySelector('[data-detalle-todos]'));
 }
 
+function leerMetadatosColecciones() {
+    try {
+        const rawValue = window.localStorage.getItem('tandem_collections');
+        if (!rawValue) return [];
+        const parsed = JSON.parse(rawValue);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .map(item => {
+                if (typeof item === 'string') {
+                    const nombre = item.trim();
+                    return nombre ? { nombre, descripcion: '' } : null;
+                }
+                if (item && typeof item === 'object') {
+                    const nombre = String(item.nombre || item.name || '').trim();
+                    if (!nombre) return null;
+                    return {
+                        nombre,
+                        descripcion: String(item.descripcion || item.description || '').trim()
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean);
+    } catch (error) {
+        return [];
+    }
+}
+
+function obtenerDescripcionColeccion(nombre) {
+    const colecciones = leerMetadatosColecciones();
+    const encontrada = colecciones.find(item => item.nombre.toLowerCase() === String(nombre || '').trim().toLowerCase());
+    return encontrada ? encontrada.descripcion : '';
+}
+
+async function cargarDetalleDesdeColeccion(coleccion) {
+    const productos = (await window.cargarProductosDesdeSupabase()).filter(producto => {
+        const colecciones = String(producto.Colecciones || '').split(/[;,]/).map(item => item.trim()).filter(Boolean);
+        return colecciones.includes(coleccion);
+    });
+
+    const descripcion = obtenerDescripcionColeccion(coleccion) || `Colección ${coleccion}. Trabajos relacionados por tema.`;
+
+    document.title = `TaNdeM | ${coleccion}`;
+    document.querySelector('[data-detalle-titulo]').textContent = coleccion;
+    document.querySelector('[data-detalle-precio]').textContent = '';
+    document.querySelector('[data-detalle-texto]').textContent = productos.length
+        ? descripcion
+        : `${descripcion} Todavía no hay trabajos publicados en esta colección.`;
+    document.querySelector('[data-detalle-especificaciones]').innerHTML = productos.length
+        ? ''
+        : '<li><span>Sin trabajos aún</span><span>Cuando agregues trabajos a esta colección, aparecerán aquí.</span></li>';
+
+    if (productos.length) {
+        mostrarTarjetasDeProductos(productos, true);
+    } else {
+        document.querySelector('[data-detalle-ultimas]').innerHTML = '';
+        document.querySelector('[data-detalle-todos]').innerHTML = '';
+    }
+
+    document.querySelector('.producto-detalle-grid').classList.add('detalle-listo');
+}
+
 async function cargarDetalleDesdeSheet(tipo) {
     const respuesta = await fetch(`${CATALOGO_SHEET_XLSX}&cachebust=${Date.now()}`);
     if (!respuesta.ok) throw new Error('No se pudo consultar Google Sheets.');

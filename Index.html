@@ -87,6 +87,14 @@
             </div>
         </section>
 
+        <section id="colecciones" style="background-color: #ffffff;">
+            <div class="container">
+                <h2>Colecciones</h2>
+                <p class="mono">[ TEMAS Y SERIES ]</p>
+                <div class="catalogo-grid colecciones-grid" id="coleccionesGrid"></div>
+            </div>
+        </section>
+
     <!-- INFORMACIÓN DEL TALLER -->
     <section id="info" style="background-color: var(--brand-blue); color: #ffffff;">
         <div class="container">
@@ -128,39 +136,97 @@
                 <p class="admin-status" id="loginStatus" role="alert"></p>
             </section>
             <section class="admin-dashboard" id="dashboardView" hidden>
-                <div class="admin-heading"><div><p class="mono">[ CATÁLOGO ]</p><h1>Trabajos</h1></div><button class="btn" id="logoutButton" type="button">Cerrar sesión</button></div>
+                <div class="admin-dashboard-bar">
+                    <div class="admin-heading"><div><h1>Trabajos</h1></div><button class="btn" id="logoutButton" type="button">Cerrar sesión</button></div>
+                    <div class="admin-dashboard-actions">
+                        <p class="admin-status" id="dashboardStatus" role="status"></p>
+                        <button id="mergeSelectedProductsButton" class="btn btn-light" type="button" disabled>Fusionar trabajos seleccionados</button>
+                    </div>
+                </div>
                 <nav class="admin-tabs" aria-label="Secciones de administración">
                     <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
                     <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
+                    <button class="admin-tab" type="button" data-admin-tab="colecciones" aria-selected="false">Colecciones</button>
                     <button class="admin-tab" type="button" data-admin-tab="inicio" aria-selected="false">Página principal</button>
                 </nav>
+                <div class="admin-storage-panel" id="storageUsagePanel" hidden>
+                    <div class="admin-storage-header">
+                        <div>
+                            <p class="mono">[ STORAGE ]</p>
+                            <h2>Espacio en Supabase</h2>
+                        </div>
+                    </div>
+                    <div class="admin-storage-bar" aria-label="Uso de almacenamiento en Supabase">
+                        <span id="storageUsageFill"></span>
+                    </div>
+                    <div class="admin-storage-meta">
+                        <span id="storageUsageText">Cargando...</span>
+                    </div>
+                    <div id="storageUsageBuckets" class="admin-storage-buckets"></div>
+                </div>
                 <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
                     <form id="productForm" class="admin-form admin-product-form">
                     <h2>Agregar trabajo</h2>
-                    <label for="productCode">Código del trabajo</label><input id="productCode" placeholder="Ej: REM-001 (si lo dejás vacío se genera solo)">
-                    <label for="productName">Nombre (opcional)</label><input id="productName">
-                    <label for="productType">Categoría</label><select id="productType" required></select>
-                    <input id="newProductType" placeholder="Nombre de la nueva categoría" hidden>
-                    <label for="productDescription">Descripción</label><textarea id="productDescription" rows="3"></textarea>
-                    <label for="productPrice">Precio</label><input id="productPrice">
-                    <label class="admin-dropzone" for="productImages"><span>Arrastrá fotos o videos aquí o elegilos. Podés sumar varias tandas.</span><input id="productImages" type="file" accept="image/*,video/*" multiple></label>
-                    <div class="admin-image-preview" id="imagePreview"></div>
+                    <div class="admin-form-section">
+                        <h3>Datos básicos</h3>
+                        <label for="productCode">Código del trabajo</label><input id="productCode" placeholder="Ej: REM-001 (si lo dejás vacío se genera solo)">
+                        <label for="productName">Nombre del trabajo</label><input id="productName" placeholder="Opcional">
+                        <label for="productType">Categoría del trabajo</label><select id="productType" required></select>
+                        <input id="newProductType" placeholder="Nombre de la nueva categoría" hidden>
+                    </div>
+                    <div class="admin-form-section">
+                        <h3>Detalle y precio</h3>
+                        <label for="productDescription">Descripción del trabajo</label><textarea id="productDescription" rows="3" placeholder="Escribí una descripción clara y útil para el cliente."></textarea>
+                        <label for="productPrice">Precio</label><input id="productPrice" placeholder="Ej: 2500">
+                    </div>
+                    <div class="admin-form-section">
+                        <h3>Multimedia y agrupación</h3>
+                        <label for="productCollections">Colecciones</label>
+                        <small class="admin-field-hint">Seleccioná con tilde las colecciones que quieras asignar a este trabajo.</small>
+                        <div class="admin-collections-wrap">
+                            <div class="admin-collection-header">
+                                <button class="btn btn-small" type="button" data-collection-toggle="all">Seleccionar todas</button>
+                                <button class="btn btn-small btn-light" type="button" data-collection-toggle="none">Limpiar</button>
+                            </div>
+                            <div id="productCollections" class="admin-collection-checkboxes" aria-label="Colecciones"></div>
+                            <small id="productCollectionsSummary" class="admin-field-hint admin-field-hint--summary">0 colecciones seleccionadas</small>
+                        </div>
+                        <label class="admin-dropzone" for="productImages"><span>Arrastrá fotos o videos aquí o elegilos. Podés sumar varias tandas.</span><input id="productImages" type="file" accept="image/*,video/*" multiple></label>
+                        <div class="admin-image-preview" id="imagePreview"></div>
+                    </div>
                     <button class="btn btn-accent" type="submit">Guardar trabajo</button>
                     </form>
-                    <p class="admin-status" id="dashboardStatus" role="status"></p>
                     <div class="admin-products-toolbar" aria-label="Filtrar trabajos">
                         <label>Buscar<input id="productSearch" type="search" placeholder="Código, nombre o descripción"></label>
                         <label>Categoría<select id="productCategoryFilter"><option value="">Todas las categorías</option></select></label>
                         <label>Mostrar<select id="productVisibilityFilter"><option value="todos">Todos</option><option value="visibles">Solo visibles</option><option value="ocultos">Solo ocultos</option></select></label>
                         <label>Ordenar<select id="productSort"><option value="nuevos">Más nuevos</option><option value="antiguos">Más antiguos</option><option value="alfabetico">Código A-Z</option></select></label>
+                        <label>Vista<select id="productViewMode"><option value="cuadricula" selected>Cuadrícula</option><option value="lista">Lista</option></select></label>
                     </div>
                     <p class="admin-results-count" id="productsCount" aria-live="polite"></p>
+                    <nav class="admin-pagination" data-product-pagination aria-label="Paginación superior de trabajos" hidden></nav>
                     <div class="admin-products" id="productsList"></div>
+                    <nav class="admin-pagination" data-product-pagination aria-label="Paginación inferior de trabajos" hidden></nav>
                 </div>
                 <section class="admin-category-editor admin-panel" data-admin-panel="categorias" hidden>
                     <h2>Textos de categorías</h2>
                     <p>Estos textos se muestran en la portada y arriba de cada categoría.</p>
                     <div class="admin-category-list" id="categoryList"></div>
+                </section>
+                <section class="admin-collection-editor admin-panel" data-admin-panel="colecciones" hidden>
+                    <h2>Colecciones</h2>
+                    <p>Administrá las colecciones disponibles para asignar a cada trabajo.</p>
+                    <form id="collectionForm" class="admin-form admin-collection-form">
+                        <div class="admin-form-section">
+                            <h3>Nueva colección</h3>
+                            <label for="collectionName">Nombre de la colección</label>
+                            <input id="collectionName" placeholder="Ej: Malvinas">
+                            <label for="collectionDescription">Descripción</label>
+                            <textarea id="collectionDescription" rows="2" placeholder="Ej: Colección inspirada en las Malvinas y la historia familiar."></textarea>
+                            <button class="btn btn-accent" type="submit">Agregar colección</button>
+                        </div>
+                    </form>
+                    <div class="admin-category-list" id="collectionList"></div>
                 </section>
                 <section class="admin-home-editor admin-panel" data-admin-panel="inicio" hidden>
                     <h2>Página principal</h2>
@@ -366,6 +432,8 @@
         }
 
         function mostrarCatalogo(productos, categorias = [], nuevosPrimero = false) {
+            catalogoGrid.classList.remove('catalogo-grid--loading');
+            const featuredProducts = leerProductosDestacados();
             const categoriasDisponibles = [...new Map(productos
                 .filter(producto => estaActivo(producto.Activo ?? true) && (producto.Nombre || producto.Imagen || producto.Imagenes))
                 .map(producto => {
@@ -377,21 +445,98 @@
             categoriasDisponibles.forEach(categoria => {
                 const productosCategoria = productos.filter(producto => estaActivo(producto.Activo ?? true) && (producto.Nombre || producto.Imagen || producto.Imagenes) && detectarTipoProducto(producto) === categoria.tipo);
                 const productosConImagen = productosCategoria.filter(producto => producto.Imagen || producto.Imagenes);
-                const ultimoProducto = nuevosPrimero ? productosConImagen[0] : [...productosConImagen].reverse()[0];
-                if (!ultimoProducto) return;
+                const productoDestacado = productosConImagen.find(producto => {
+                    const idProducto = String(producto.Id || producto.id || '');
+                    return featuredProducts[categoria.tipo] && String(featuredProducts[categoria.tipo]) === idProducto;
+                }) || productosConImagen[0] || null;
+                if (!productoDestacado) return;
                 const enlace = document.createElement('a');
                 enlace.className = 'producto-card-link';
                 enlace.href = categoria.enlace;
-                const imagen = convertirImagenProducto(ultimoProducto.Imagen, categoria.tipo);
+                enlace.title = `Ir a ${categoria.titulo}`;
+                enlace.setAttribute('aria-label', `Ir a ${categoria.titulo}`);
+                const imagen = convertirImagenProducto(productoDestacado.Imagen, categoria.tipo);
                 enlace.innerHTML = `
                     <article class="producto-card">
                         <div class="producto-img"><img src="${imagen}" alt="${categoria.titulo}" onerror="this.onerror=null;this.src='logo.JPG'"></div>
                         <h3>${categoria.titulo}</h3>
                         <p>${categoria.texto}</p>
-                        <span class="btn btn-accent">VER TRABAJOS</span>
+                        <span class="btn btn-accent producto-card-cta">VER CATEGORÍA</span>
                     </article>`;
                 catalogoGrid.appendChild(enlace);
             });
+            mostrarColecciones(productos);
+        }
+
+        function mostrarColecciones(productos) {
+            const coleccionesGrid = document.getElementById('coleccionesGrid');
+            if (!coleccionesGrid) return;
+            const colecciones = new Map();
+            productos.forEach(producto => {
+                if (!estaActivo(producto.Activo ?? true)) return;
+                const nombres = String(producto.Colecciones || producto.colecciones || '').split(/[;,]/).map(item => item.trim()).filter(Boolean);
+                nombres.forEach(nombre => {
+                    const clave = nombre.toLowerCase();
+                    if (!colecciones.has(clave)) {
+                        colecciones.set(clave, {
+                            nombre,
+                            descripcion: '',
+                            imagen: producto.Imagen || (producto.Imagenes ? String(producto.Imagenes).split('|')[0] : ''),
+                            enlace: `categoria.html?coleccion=${encodeURIComponent(nombre)}`
+                        });
+                    }
+                });
+            });
+
+            try {
+                const rawValue = window.localStorage.getItem('tandem_collections');
+                if (rawValue) {
+                    const parsed = JSON.parse(rawValue);
+                    const lista = Array.isArray(parsed) ? parsed : [];
+                    lista.forEach(item => {
+                        const nombre = typeof item === 'string' ? item.trim() : String(item?.nombre || item?.name || '').trim();
+                        if (!nombre) return;
+                        const clave = nombre.toLowerCase();
+                        if (!colecciones.has(clave)) {
+                            colecciones.set(clave, {
+                                nombre,
+                                descripcion: typeof item === 'string' ? '' : String(item?.descripcion || item?.description || '').trim(),
+                                imagen: '',
+                                enlace: `categoria.html?coleccion=${encodeURIComponent(nombre)}`
+                            });
+                            return;
+                        }
+                        const coleccion = colecciones.get(clave);
+                        if (!coleccion.descripcion) {
+                            coleccion.descripcion = typeof item === 'string' ? '' : String(item?.descripcion || item?.description || '').trim();
+                        }
+                    });
+                }
+            } catch (error) {
+                // Ignorar errores de lectura local.
+            }
+
+            coleccionesGrid.innerHTML = [...colecciones.values()].map(coleccion => `
+                <a class="producto-card-link" href="${coleccion.enlace}" title="Ir a ${coleccion.nombre}" aria-label="Ir a ${coleccion.nombre}">
+                    <article class="producto-card producto-card-coleccion">
+                        <div class="producto-img"><img src="${convertirImagenProducto(coleccion.imagen, 'coleccion')}" alt="${coleccion.nombre}" onerror="this.onerror=null;this.src='logo.JPG'"></div>
+                        <h3>${coleccion.nombre}</h3>
+                        <p>${coleccion.descripcion || 'Ver todos los trabajos de esta colección.'}</p>
+                        <span class="btn btn-accent producto-card-cta">VER COLECCIÓN</span>
+                    </article>
+                </a>
+            `).join('');
+        }
+
+        function leerProductosDestacados() {
+            try {
+                const rawValue = window.localStorage.getItem('tandem_featured_products');
+                if (!rawValue) return {};
+                const parsed = JSON.parse(rawValue);
+                return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (error) {
+                return {};
+            }
         }
 
         function obtenerCampoCategoria(fila, nombres) {
@@ -488,6 +633,8 @@
                 console.error(error);
             }
         }
+
+        catalogoGrid.innerHTML = '<div class="catalogo-loading"><span class="catalogo-loading-spinner" aria-hidden="true"></span><span>Cargando productos...</span></div>';
 
         (window.cargarProductosDesdeSupabase ? Promise.all([cargarProductosDesdeSupabase(), window.cargarCategoriasDesdeSupabase ? cargarCategoriasDesdeSupabase() : Promise.resolve([])]).then(([productos, categorias]) => {
             if (!productos.length) throw new Error('Supabase todavía no tiene productos.');

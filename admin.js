@@ -19,9 +19,28 @@
     const productCategoryFilter = document.getElementById('productCategoryFilter');
     const productVisibilityFilter = document.getElementById('productVisibilityFilter');
     const productSort = document.getElementById('productSort');
+    const productViewMode = document.getElementById('productViewMode');
+    const productCollections = document.getElementById('productCollections');
     const productsCount = document.getElementById('productsCount');
+    const productPagination = document.querySelectorAll('[data-product-pagination]');
+    const mergeSelectedProductsButton = document.getElementById('mergeSelectedProductsButton');
     const homeConfigEditor = document.getElementById('homeConfigEditor');
+    const collectionForm = document.getElementById('collectionForm');
+    const PRODUCT_COLLECTIONS_DRAFT_STORAGE_KEY = 'tandem_product_collections_draft';
+    const collectionName = document.getElementById('collectionName');
+    const collectionDescription = document.getElementById('collectionDescription');
+    const collectionList = document.getElementById('collectionList');
     const HOME_CONFIG_STORAGE_KEY = 'tandem_home_config';
+    const FEATURED_PRODUCTS_STORAGE_KEY = 'tandem_featured_products';
+    const PRODUCT_COLLECTIONS_STORAGE_KEY = 'tandem_product_collections';
+    const COLLECTIONS_STORAGE_KEY = 'tandem_collections';
+    const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024;
+    const STORAGE_BUCKETS = [
+        { name: 'product-images', label: 'Imágenes' },
+        { name: 'product-videos', label: 'Videos' }
+    ];
+    const STORAGE_WARNING_THRESHOLD = 0.7;
+    const STORAGE_CRITICAL_THRESHOLD = 0.85;
     const HOME_CONFIG_DEFAULTS = {
         page_title: 'TaNdeM | Taller de Estampado',
         hero_mono: '[ TALLER DE GRABADO Y ESTAMPADO ]',
@@ -46,6 +65,8 @@
     let categories = [];
     let categoryDetails = {};
     let allProducts = [];
+    let currentProductPage = 1;
+    const PRODUCTS_PER_PAGE = 8;
     const archivosPendientes = new WeakMap();
 
     function agregarArchivosAlInput(input, archivos) {
@@ -127,6 +148,86 @@
         element.classList.toggle('admin-status-success', !error && Boolean(message));
     }
 
+    function formatBytes(bytes) {
+        const safeBytes = Number.isFinite(bytes) ? Math.max(0, bytes) : 0;
+        if (safeBytes < 1024) return `${safeBytes} B`;
+
+        const units = ['KB', 'MB', 'GB', 'TB'];
+        let value = safeBytes / 1024;
+        let unitIndex = 0;
+
+        while (value >= 1024 && unitIndex < units.length - 1) {
+            value /= 1024;
+            unitIndex += 1;
+        }
+
+        return `${value.toFixed(value >= 10 || unitIndex === 0 ? 1 : 2)} ${units[unitIndex]}`;
+    }
+
+    async function loadStorageUsage() {
+        const panel = document.getElementById('storageUsagePanel');
+        const fill = document.getElementById('storageUsageFill');
+        const text = document.getElementById('storageUsageText');
+        const buckets = document.getElementById('storageUsageBuckets');
+
+        if (!panel || !fill || !text || !buckets || !client) return;
+
+        panel.hidden = false;
+        text.textContent = 'Calculando espacio usado...';
+        fill.style.width = '0%';
+        buckets.innerHTML = '';
+
+        try {
+            const detalleBuckets = await Promise.all(STORAGE_BUCKETS.map(async ({ name, label }) => {
+                const { data, error } = await client.storage.from(name).list('', { limit: 1000, offset: 0 });
+                if (error) throw error;
+
+                const bytes = (data || []).reduce((total, file) => total + Number(file.metadata?.contentLength || file.metadata?.size || 0), 0);
+                return {
+                    label,
+                    bytes,
+                    count: data?.length || 0
+                };
+            }));
+
+            const totalBytes = detalleBuckets.reduce((sum, bucket) => sum + bucket.bytes, 0);
+            const percentageUsed = Math.min((totalBytes / STORAGE_LIMIT_BYTES) * 100, 100);
+            const percentageFree = Math.max(0, 100 - percentageUsed);
+
+            fill.style.width = `${percentageUsed}%`;
+            panel.classList.toggle('admin-storage-panel--warn', percentageUsed >= STORAGE_WARNING_THRESHOLD * 100 && percentageUsed < STORAGE_CRITICAL_THRESHOLD * 100);
+            panel.classList.toggle('admin-storage-panel--critical', percentageUsed >= STORAGE_CRITICAL_THRESHOLD * 100);
+
+            let warningText = '';
+            if (percentageUsed >= STORAGE_CRITICAL_THRESHOLD * 100) {
+                warningText = ' · Atención: queda poco espacio en Supabase Storage.';
+            } else if (percentageUsed >= STORAGE_WARNING_THRESHOLD * 100) {
+                warningText = ' · Cuidado: ya usaste más del 70% del espacio disponible.';
+            }
+
+            text.textContent = `${formatBytes(totalBytes)} usados · ${formatBytes(STORAGE_LIMIT_BYTES)} estimados · ${percentageFree.toFixed(0)}% libres${warningText}`;
+
+            buckets.innerHTML = detalleBuckets.map(bucket => {
+                const bucketShare = totalBytes ? (bucket.bytes / totalBytes) * 100 : 0;
+                return `
+                    <div class="admin-storage-bucket">
+                        <div class="admin-storage-bucket__meta">
+                            <span>${bucket.label}</span>
+                            <strong>${formatBytes(bucket.bytes)}</strong>
+                        </div>
+                        <div class="admin-storage-bucket__bar">
+                            <span style="width: ${Math.min(bucketShare, 100)}%"></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            text.textContent = 'No se pudo consultar el espacio de Supabase Storage.';
+            fill.style.width = '0%';
+            buckets.innerHTML = `<p class="admin-storage-error">${formatSupabaseError(error)}</p>`;
+        }
+    }
+
     function formatSupabaseError(error) {
         const message = error && typeof error === 'object' ? error.message || String(error) : String(error || '');
 
@@ -141,24 +242,60 @@
         return message || 'No se pudo completar la operación.';
     }
 
-    function setButtonState(button, busyText) {
+    function hasMissingCollectionsColumnError(error) {
+        const message = error && typeof error === 'object' ? error.message || String(error) : String(error || '');
+        return /Could not find the 'colecciones' column of 'productos' in the schema cache|column.*colecciones.*does not exist|colecciones.*schema cache/i.test(message);
+    }
+
+    async function insertProductWithFallback(payload) {
+        let candidatePayload = payload;
+        let lastError = null;
+
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const { data, error } = await client.from('productos').insert(candidatePayload).select('id');
+            if (!error) return { data, error: null };
+            lastError = error;
+            if (!hasMissingCollectionsColumnError(error) || !Object.prototype.hasOwnProperty.call(candidatePayload, 'colecciones')) break;
+            candidatePayload = { ...candidatePayload };
+            delete candidatePayload.colecciones;
+        }
+
+        return { data: null, error: lastError };
+    }
+
+    async function updateProductWithFallback(productId, payload) {
+        let candidatePayload = payload;
+        let lastError = null;
+
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const { error } = await client.from('productos').update(candidatePayload).eq('id', productId);
+            if (!error) return { error: null };
+            lastError = error;
+            if (!hasMissingCollectionsColumnError(error) || !Object.prototype.hasOwnProperty.call(candidatePayload, 'colecciones')) break;
+            candidatePayload = { ...candidatePayload };
+            delete candidatePayload.colecciones;
+        }
+
+        return { error: lastError };
+    }
+
+    function setButtonState(button, busyText, showSuccess = true) {
+        if (!button) return () => {};
         const originalText = button.textContent;
         button.disabled = true;
+        button.classList.remove('btn-success');
         button.classList.add('btn-loading');
         button.textContent = busyText;
         return (successText = '') => {
             button.disabled = false;
             button.classList.remove('btn-loading');
-            if (!successText) {
+            if (!successText || !showSuccess) {
+                button.classList.remove('btn-success');
                 button.textContent = originalText;
                 return;
             }
             button.classList.add('btn-success');
             button.textContent = successText;
-            window.setTimeout(() => {
-                button.classList.remove('btn-success');
-                button.textContent = originalText;
-            }, 2200);
         };
     }
 
@@ -185,6 +322,226 @@
             return normalizeHomeConfig(JSON.parse(rawValue));
         } catch (error) {
             return normalizeHomeConfig();
+        }
+    }
+
+    function normalizeCollections(value) {
+        return [...new Set(String(value || '').split(/[;,\n]/).map(item => item.trim()).filter(Boolean))];
+    }
+
+    function normalizeCollectionEntries(collections) {
+        if (!Array.isArray(collections)) return [];
+        return collections
+            .map(collection => {
+                if (typeof collection === 'string') {
+                    const nombre = collection.trim();
+                    return nombre ? { nombre, descripcion: '' } : null;
+                }
+                if (collection && typeof collection === 'object') {
+                    const nombre = String(collection.nombre || collection.name || '').trim();
+                    if (!nombre) return null;
+                    return {
+                        nombre,
+                        descripcion: String(collection.descripcion || collection.description || '').trim()
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean);
+    }
+
+    function readCollections() {
+        try {
+            const rawValue = window.localStorage.getItem(COLLECTIONS_STORAGE_KEY);
+            if (!rawValue) return [];
+            const parsed = JSON.parse(rawValue);
+            return normalizeCollectionEntries(parsed);
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function writeCollections(collections) {
+        try {
+            window.localStorage.setItem(COLLECTIONS_STORAGE_KEY, JSON.stringify(normalizeCollectionEntries(collections)));
+        } catch (error) {
+            // Ignorar errores de almacenamiento local.
+        }
+    }
+
+    function syncCollectionsFromProducts() {
+        const collections = new Map();
+        readCollections().forEach(collection => {
+            collections.set(categoryKey(collection.nombre), {
+                nombre: collection.nombre,
+                descripcion: collection.descripcion || ''
+            });
+        });
+        allProducts.forEach(product => {
+            normalizeCollections(product.colecciones || '').forEach(collection => {
+                if (!collections.has(categoryKey(collection))) {
+                    collections.set(categoryKey(collection), {
+                        nombre: collection,
+                        descripcion: ''
+                    });
+                }
+            });
+        });
+        Object.values(readProductCollections()).forEach(storedCollectionList => {
+            normalizeCollections(storedCollectionList).forEach(collection => {
+                if (!collections.has(categoryKey(collection))) {
+                    collections.set(categoryKey(collection), {
+                        nombre: collection,
+                        descripcion: ''
+                    });
+                }
+            });
+        });
+        const orderedCollections = [...collections.values()].sort((first, second) => first.nombre.localeCompare(second.nombre, 'es'));
+        writeCollections(orderedCollections);
+        return orderedCollections.map(collection => collection.nombre);
+    }
+
+    function mergeProductsIntoTarget(products) {
+        if (!Array.isArray(products) || products.length < 2) return null;
+
+        const target = products[0];
+        const images = [];
+        const collections = [];
+        const seenImages = new Set();
+        const seenCollections = new Set();
+
+        products.forEach(product => {
+            (Array.isArray(product.imagenes) ? product.imagenes : []).forEach(image => {
+                const value = String(image || '').trim();
+                if (value && !seenImages.has(value)) {
+                    seenImages.add(value);
+                    images.push(value);
+                }
+            });
+            normalizeCollections(product.colecciones || '').forEach(collection => {
+                const key = categoryKey(collection);
+                if (key && !seenCollections.has(key)) {
+                    seenCollections.add(key);
+                    collections.push(collection);
+                }
+            });
+        });
+
+        return {
+            codigo: target.codigo || `PRD-${String(target.id).slice(0, 6).toUpperCase()}`,
+            nombre: target.nombre || '',
+            tipo: target.tipo || '',
+            descripcion: target.descripcion || '',
+            precio: target.precio || '',
+            activo: target.activo !== false,
+            imagenes: images,
+            colecciones: collections.join(', ')
+        };
+    }
+
+    function getAvailableCollections() {
+        const collections = new Set(syncCollectionsFromProducts());
+        return [...collections].sort((first, second) => first.localeCompare(second, 'es'));
+    }
+
+    function renderCollectionOptions(selectedCollections = []) {
+        if (!productCollections) return;
+        const availableCollections = getAvailableCollections();
+        const effectiveSelectedCollections = selectedCollections.length ? selectedCollections : readProductCollectionsDraft();
+        productCollections.innerHTML = availableCollections.length
+            ? availableCollections.map(collection => `
+                <label class="admin-collection-option">
+                    <input type="checkbox" value="${escapeAttribute(collection)}" ${effectiveSelectedCollections.includes(collection) ? 'checked' : ''}>
+                    <span>${escapeText(collection)}</span>
+                </label>
+            `).join('')
+            : '<p class="admin-collection-empty">Sin colecciones disponibles</p>';
+        productCollections.classList.toggle('admin-collection-checkboxes--disabled', availableCollections.length === 0);
+        const summary = document.getElementById('productCollectionsSummary');
+        if (summary) {
+            const selectedCount = Array.from(productCollections.querySelectorAll('input[type="checkbox"]:checked')).length;
+            summary.textContent = `${selectedCount} colecciones seleccionadas`;
+        }
+    }
+
+    function renderCollectionsManager() {
+        if (!collectionList) return;
+        const collections = readCollections();
+        collectionList.innerHTML = collections.length
+            ? collections.map(collection => `
+                <article class="admin-collection-row" data-collection="${escapeAttribute(collection.nombre)}">
+                    <div class="admin-collection-detail">
+                        <h3>${escapeText(collection.nombre)}</h3>
+                        <label class="admin-collection-label">Descripción</label>
+                        <textarea data-collection-description="${escapeAttribute(collection.nombre)}" rows="2" placeholder="Escribí una breve descripción de esta colección">${escapeText(collection.descripcion || '')}</textarea>
+                    </div>
+                    <div class="admin-collection-actions">
+                        <button class="btn" data-collection-action="save" type="button">Guardar descripción</button>
+                        <button class="btn btn-danger" data-collection-action="delete" type="button">Eliminar</button>
+                    </div>
+                </article>
+            `).join('')
+            : '<p>No hay colecciones creadas todavía.</p>';
+    }
+
+    function readProductCollections() {
+        try {
+            const rawValue = window.localStorage.getItem(PRODUCT_COLLECTIONS_STORAGE_KEY);
+            if (!rawValue) return {};
+            const parsed = JSON.parse(rawValue);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function writeProductCollections(collections) {
+        try {
+            window.localStorage.setItem(PRODUCT_COLLECTIONS_STORAGE_KEY, JSON.stringify(collections));
+        } catch (error) {
+            // Ignorar errores de almacenamiento local.
+        }
+    }
+
+    function readProductCollectionsDraft() {
+        try {
+            const rawValue = window.localStorage.getItem(PRODUCT_COLLECTIONS_DRAFT_STORAGE_KEY);
+            if (!rawValue) return [];
+            const parsed = JSON.parse(rawValue);
+            return Array.isArray(parsed)
+                ? parsed.map(item => String(item || '').trim()).filter(Boolean)
+                : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function writeProductCollectionsDraft(collections) {
+        try {
+            const nextCollections = [...new Set((Array.isArray(collections) ? collections : []).map(item => String(item || '').trim()).filter(Boolean))];
+            window.localStorage.setItem(PRODUCT_COLLECTIONS_DRAFT_STORAGE_KEY, JSON.stringify(nextCollections));
+        } catch (error) {
+            // Ignorar errores de almacenamiento local.
+        }
+    }
+
+    function readFeaturedProducts() {
+        try {
+            const rawValue = window.localStorage.getItem(FEATURED_PRODUCTS_STORAGE_KEY);
+            if (!rawValue) return {};
+            const parsed = JSON.parse(rawValue);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function writeFeaturedProducts(featuredProducts) {
+        try {
+            window.localStorage.setItem(FEATURED_PRODUCTS_STORAGE_KEY, JSON.stringify(featuredProducts));
+        } catch (error) {
+            // Ignorar errores de almacenamiento local.
         }
     }
 
@@ -265,7 +622,7 @@
         document.body.classList.add('admin-open');
         renderHomeConfigEditor();
         await loadHomeConfigForAdmin();
-        loadProducts();
+        await loadProducts();
         resetInactivityTimer();
     }
 
@@ -285,11 +642,29 @@
             setStatus(dashboardStatus, error.message, true);
             return;
         }
-        allProducts = data;
+        const storedCollections = readProductCollections();
+        allProducts = data.map(product => ({
+            ...product,
+            colecciones: normalizeCollections(product.colecciones || storedCollections[product.id] || []).join(', ')
+        }));
+        syncCollectionsFromProducts();
         updateCategoryOptions(data);
         productCategoryFilter.innerHTML = '<option value="">Todas las categorías</option>' + categories.map(category => `<option value="${escapeAttribute(category)}">${escapeText(category)}</option>`).join('');
+        renderCollectionOptions();
+        renderCollectionsManager();
         renderProducts();
         loadCategoryDetails();
+        await loadStorageUsage();
+    }
+
+    function applyProductsViewMode() {
+        if (!productsList || !productViewMode) return;
+        const isGrid = productViewMode.value === 'cuadricula';
+        productsList.classList.toggle('admin-products--grid', isGrid);
+        productsList.classList.toggle('admin-products--list', !isGrid);
+        if (!productViewMode.value) {
+            productViewMode.value = 'cuadricula';
+        }
     }
 
     function renderProducts() {
@@ -297,6 +672,7 @@
         const visibility = productVisibilityFilter.value;
         const sort = productSort.value;
         const selectedCategory = categoryKey(productCategoryFilter.value);
+        const featuredProducts = readFeaturedProducts();
         const filteredProducts = allProducts.filter(product => {
             const searchable = [product.codigo, product.nombre, product.descripcion, product.tipo].join(' ').toLowerCase();
             const matchesSearch = !search || searchable.includes(search);
@@ -309,18 +685,73 @@
             const secondDate = new Date(second.creado_en || 0).getTime();
             return sort === 'antiguos' ? firstDate - secondDate : secondDate - firstDate;
         });
-        productsCount.textContent = `${filteredProducts.length} de ${allProducts.length} trabajos`;
-        productsList.innerHTML = filteredProducts.map(product => `
+        const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+        currentProductPage = Math.min(currentProductPage, totalPages);
+        const pageStart = (currentProductPage - 1) * PRODUCTS_PER_PAGE;
+        const productsOnPage = filteredProducts.slice(pageStart, pageStart + PRODUCTS_PER_PAGE);
+        const visibleStart = filteredProducts.length ? pageStart + 1 : 0;
+        const visibleEnd = Math.min(pageStart + PRODUCTS_PER_PAGE, filteredProducts.length);
+        productsCount.textContent = filteredProducts.length
+            ? `Mostrando ${visibleStart}-${visibleEnd} de ${filteredProducts.length} trabajos`
+            : `0 de ${allProducts.length} trabajos`;
+        renderProductPagination(totalPages);
+        productsList.innerHTML = productsOnPage.map(product => {
+            const isFeatured = featuredProducts[categoryKey(product.tipo)] === String(product.id);
+            return `
             <article class="admin-product-row" data-id="${product.id}" data-images="${escapeAttribute(JSON.stringify(product.imagenes || []))}">
+                <label class="admin-product-merge-select" aria-label="Seleccionar para fusionar">
+                    <input type="checkbox" data-merge-select value="${product.id}">
+                </label>
                 ${renderMediaMarkup(product.imagenes?.[0], { compact: true }) || `<img src="${escapeAttribute(convertirImagenAdministrativa(product.imagenes?.[0]))}" alt="" onerror="this.onerror=null;this.src='logo.JPG'">`}
                 <div><input data-field="codigo" value="${escapeAttribute(product.codigo || `PRD-${product.id.slice(0, 6).toUpperCase()}`)}" placeholder="Código único"><input data-field="nombre" value="${escapeAttribute(product.nombre)}"><select data-field="tipo">${categories.map(category => `<option value="${escapeAttribute(category)}" ${categoryKey(category) === categoryKey(product.tipo) ? 'selected' : ''}>${escapeText(category)}</option>`).join('')}<option value="__new__">Crear nueva categoría...</option></select><input data-field="nuevo-tipo" placeholder="Nueva categoría" hidden></div>
                 <textarea data-field="descripcion" rows="2">${escapeText(product.descripcion)}</textarea>
                 <input data-field="precio" value="${escapeAttribute(product.precio)}" placeholder="Precio">
-                <label><input data-field="activo" type="checkbox" ${product.activo ? 'checked' : ''}> Visible</label>
-                <div class="admin-edit-images"><strong>Fotos y videos</strong><div class="admin-existing-images"></div><label class="admin-image-picker">Elegir fotos o videos<input data-field="imagenes" type="file" accept="image/*,video/*" multiple></label><select data-field="modo-imagenes"><option value="agregar">Agregar a las actuales</option><option value="reemplazar">Reemplazar todas</option></select></div>
+                <div class="admin-product-flags">
+                    <label class="admin-flag"><input data-field="activo" type="checkbox" ${product.activo ? 'checked' : ''}> Visible</label>
+                    <label class="admin-flag" title="Usa este trabajo como imagen principal de la categoría en la portada"><input data-field="destacado" type="checkbox" ${isFeatured ? 'checked' : ''}> Usar como imagen principal</label>
+                </div>
+                <div class="admin-edit-images"><strong>Fotos y videos</strong><div class="admin-existing-images"></div><label class="admin-image-picker">Elegir fotos o videos<input data-field="imagenes" type="file" accept="image/*,video/*" multiple></label><div class="admin-collections-field"><span>Colecciones</span><div data-field="colecciones" class="admin-collection-checkboxes admin-collection-checkboxes--compact">${getAvailableCollections().map(collection => `<label class="admin-collection-option"><input type="checkbox" data-field="coleccion" value="${escapeAttribute(collection)}" ${normalizeCollections(product.colecciones || '').includes(collection) ? 'checked' : ''}><span>${escapeText(collection)}</span></label>`).join('')}</div></div><select data-field="modo-imagenes"><option value="agregar">Agregar a las actuales</option><option value="reemplazar">Reemplazar todas</option></select></div>
                 <div class="admin-product-actions"><button class="btn" data-action="save" type="button">Guardar</button><button class="btn btn-danger" data-action="delete" type="button">Eliminar</button></div>
-            </article>`).join('');
+            </article>`;
+        }).join('');
         productsList.querySelectorAll('[data-id]').forEach(row => renderExistingImages(row));
+        applyProductsViewMode();
+        updateMergeSelectionUI();
+    }
+
+    function renderProductPagination(totalPages) {
+        if (!productPagination.length) return;
+        if (totalPages <= 1) {
+            productPagination.forEach(pagination => {
+                pagination.hidden = true;
+                pagination.innerHTML = '';
+            });
+            return;
+        }
+
+        const pageButtons = Array.from({ length: totalPages }, (_, index) => {
+            const page = index + 1;
+            const active = page === currentProductPage;
+            return `<button class="admin-pagination-button${active ? ' admin-pagination-button--active' : ''}" type="button" data-product-page="${page}" aria-label="Ir a la página ${page}" aria-current="${active ? 'page' : 'false'}">${page}</button>`;
+        }).join('');
+        const paginationMarkup = `
+            <button class="admin-pagination-button" type="button" data-product-page="${currentProductPage - 1}" ${currentProductPage === 1 ? 'disabled' : ''}>Anterior</button>
+            <div class="admin-pagination-pages">${pageButtons}</div>
+            <button class="admin-pagination-button" type="button" data-product-page="${currentProductPage + 1}" ${currentProductPage === totalPages ? 'disabled' : ''}>Siguiente</button>
+        `;
+        productPagination.forEach(pagination => {
+            pagination.hidden = false;
+            pagination.innerHTML = paginationMarkup;
+        });
+    }
+
+    function updateMergeSelectionUI() {
+        if (!mergeSelectedProductsButton || !productsList) return;
+        const selected = productsList.querySelectorAll('[data-merge-select]:checked').length;
+        mergeSelectedProductsButton.disabled = selected < 2;
+        mergeSelectedProductsButton.textContent = selected >= 2
+            ? `Fusionar ${selected} trabajos seleccionados`
+            : 'Fusionar trabajos seleccionados';
     }
 
     function renderExistingImages(row) {
@@ -523,6 +954,92 @@
         }
     });
 
+    collectionForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const createButton = collectionForm.querySelector('button[type="submit"]');
+        const restoreButton = setButtonState(createButton, 'Creando...');
+        let created = false;
+
+        try {
+            const nombre = normalizeCollections(collectionName.value)[0];
+            const descripcion = String(collectionDescription.value || '').trim();
+            if (!nombre) {
+                restoreButton();
+                setStatus(dashboardStatus, 'Escribí el nombre de la colección.', true);
+                return;
+            }
+
+            const collections = readCollections();
+            if (collections.some(collection => categoryKey(collection.nombre) === categoryKey(nombre))) {
+                restoreButton();
+                setStatus(dashboardStatus, 'Esa colección ya existe.', true);
+                return;
+            }
+
+            const nextCollections = [...collections, { nombre, descripcion }].sort((first, second) => first.nombre.localeCompare(second.nombre, 'es'));
+            writeCollections(nextCollections);
+            collectionName.value = '';
+            collectionDescription.value = '';
+            renderProducts();
+            renderCollectionOptions();
+            renderCollectionsManager();
+            created = true;
+            setStatus(dashboardStatus, 'Colección agregada.');
+        } finally {
+            restoreButton(created ? 'Creada' : '');
+        }
+    });
+
+    collectionList.addEventListener('click', event => {
+        const action = event.target.dataset.collectionAction;
+        const row = event.target.closest('[data-collection]');
+        if (!row) return;
+        const collection = row.dataset.collection;
+        if (!collection) return;
+        const button = event.target.closest('button');
+        if (!button) return;
+
+        if (action === 'delete') {
+            const restoreButton = setButtonState(button, 'Eliminando...');
+            let removed = false;
+            try {
+                const collections = readCollections().filter(item => categoryKey(item.nombre) !== categoryKey(collection));
+                writeCollections(collections);
+                renderProducts();
+                renderCollectionOptions();
+                renderCollectionsManager();
+                removed = true;
+                setStatus(dashboardStatus, 'Colección eliminada.');
+            } finally {
+                restoreButton(removed ? 'Eliminada' : '');
+            }
+            return;
+        }
+
+        if (action === 'save') {
+            const restoreButton = setButtonState(button, 'Guardando...');
+            let saved = false;
+            try {
+                const textarea = row.querySelector('[data-collection-description]');
+                const nextDescription = String(textarea?.value || '').trim();
+                const collections = readCollections().map(item => {
+                    if (categoryKey(item.nombre) === categoryKey(collection)) {
+                        return { ...item, descripcion: nextDescription };
+                    }
+                    return item;
+                });
+                writeCollections(collections);
+                renderProducts();
+                renderCollectionOptions();
+                renderCollectionsManager();
+                saved = true;
+                setStatus(dashboardStatus, 'Descripción actualizada.');
+            } finally {
+                restoreButton(saved ? 'Guardado' : '');
+            }
+        }
+    });
+
     productForm.addEventListener('submit', async event => {
         event.preventDefault();
         const restoreButton = setButtonState(productForm.querySelector('button[type="submit"]'), 'Guardando...');
@@ -531,11 +1048,27 @@
         try {
             const category = getSelectedCategory();
             const imageUrls = await uploadImages(imageInput.files);
-            const { error } = await client.from('productos').insert({
-                codigo: productCode.value.trim() || generarCodigo(), nombre: productName.value.trim(), tipo: category, descripcion: productDescription.value.trim(), precio: productPrice.value.trim(), imagenes: imageUrls
-            });
+            const colecciones = Array.from(productCollections?.querySelectorAll('input[type="checkbox"]:checked') || []).map(option => option.value.trim()).filter(Boolean);
+            const coleccionesTexto = normalizeCollections(colecciones).join(', ');
+            const payload = {
+                codigo: productCode.value.trim() || generarCodigo(),
+                nombre: productName.value.trim(),
+                tipo: category,
+                descripcion: productDescription.value.trim(),
+                precio: productPrice.value.trim(),
+                imagenes: imageUrls,
+                colecciones: coleccionesTexto
+            };
+            const { data: insertedRows, error } = await insertProductWithFallback(payload);
             if (error) throw error;
+            const insertedId = insertedRows && insertedRows[0] ? insertedRows[0].id : null;
+            if (insertedId && colecciones) {
+                const storedCollections = readProductCollections();
+                storedCollections[insertedId] = normalizeCollections(colecciones);
+                writeProductCollections(storedCollections);
+            }
             productForm.reset();
+            writeProductCollectionsDraft([]);
             archivosPendientes.delete(imageInput);
             renderPreview();
             saved = true;
@@ -549,7 +1082,109 @@
     });
 
     imageInput.addEventListener('change', renderPreview);
-    [productSearch, productCategoryFilter, productVisibilityFilter, productSort].forEach(control => control.addEventListener('input', renderProducts));
+
+    mergeSelectedProductsButton?.addEventListener('click', async () => {
+        const selectedIds = Array.from(productsList.querySelectorAll('[data-merge-select]:checked')).map(checkbox => String(checkbox.value));
+        if (selectedIds.length < 2) {
+            setStatus(dashboardStatus, 'Seleccioná al menos dos trabajos para fusionarlos.', true);
+            return;
+        }
+
+        const selectedProducts = allProducts.filter(product => selectedIds.includes(String(product.id)));
+        const target = selectedProducts[0];
+        const sourceIds = selectedProducts.slice(1).map(product => String(product.id));
+        const nombreDestino = target.nombre || target.codigo || 'Trabajo fusionado';
+
+        if (!window.confirm(`Vas a fusionar ${selectedProducts.length} trabajos en "${nombreDestino}". Los trabajos secundarios se borrarán y sus imágenes/colecciones se unirán al trabajo principal. ¿Continuar?`)) {
+            return;
+        }
+
+        mergeSelectedProductsButton.disabled = true;
+        mergeSelectedProductsButton.textContent = 'Fusionando...';
+        setStatus(dashboardStatus, 'Fusionando trabajos...');
+
+        try {
+            const mergedPayload = mergeProductsIntoTarget(selectedProducts);
+            if (!mergedPayload) {
+                throw new Error('No se pudo preparar la fusión de trabajos.');
+            }
+
+            const { error: updateError } = await updateProductWithFallback(target.id, mergedPayload);
+            if (updateError) throw updateError;
+
+            const deleteErrors = [];
+            for (const sourceId of sourceIds) {
+                const { error } = await client.from('productos').delete().eq('id', sourceId);
+                if (error) deleteErrors.push(error);
+            }
+            if (deleteErrors.length) {
+                throw deleteErrors[0];
+            }
+
+            const storedCollections = readProductCollections();
+            sourceIds.forEach(sourceId => delete storedCollections[sourceId]);
+            storedCollections[target.id] = normalizeCollections(mergedPayload.colecciones);
+            writeProductCollections(storedCollections);
+
+            const featuredProducts = readFeaturedProducts();
+            for (const [category, productId] of Object.entries(featuredProducts)) {
+                if (sourceIds.includes(String(productId))) {
+                    delete featuredProducts[category];
+                }
+            }
+            writeFeaturedProducts(featuredProducts);
+
+            allProducts = allProducts
+                .filter(product => !sourceIds.includes(String(product.id)))
+                .map(product => product.id === target.id ? { ...product, ...mergedPayload } : product);
+
+            syncCollectionsFromProducts();
+            renderCollectionOptions();
+            renderCollectionsManager();
+            setStatus(dashboardStatus, 'Trabajos fusionados correctamente.');
+            await loadProducts();
+        } catch (error) {
+            setStatus(dashboardStatus, formatSupabaseError(error), true);
+        } finally {
+            updateMergeSelectionUI();
+            mergeSelectedProductsButton.disabled = false;
+            mergeSelectedProductsButton.textContent = 'Fusionar trabajos seleccionados';
+        }
+    });
+
+    document.addEventListener('click', event => {
+        const pageButton = event.target.closest('[data-product-page]');
+        const isPaginationButton = pageButton && Array.from(productPagination).some(pagination => pagination.contains(pageButton));
+        if (isPaginationButton) {
+            currentProductPage = Number(pageButton.dataset.productPage);
+            renderProducts();
+            productsList?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+        const toggle = event.target.closest('[data-collection-toggle]');
+        if (!toggle || !productCollections) return;
+        const checkboxes = productCollections.querySelectorAll('input[type="checkbox"]');
+        if (!checkboxes.length) return;
+        const selectAll = toggle.dataset.collectionToggle === 'all';
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAll;
+        });
+        const checkedCollections = Array.from(productCollections.querySelectorAll('input[type="checkbox"]:checked')).map(checkbox => checkbox.value);
+        writeProductCollectionsDraft(checkedCollections);
+        renderCollectionOptions(checkedCollections);
+    });
+    document.addEventListener('change', event => {
+        if (event.target.matches('#productCollections input[type="checkbox"]')) {
+            const checkedCollections = Array.from(productCollections.querySelectorAll('input[type="checkbox"]:checked')).map(checkbox => checkbox.value);
+            writeProductCollectionsDraft(checkedCollections);
+            renderCollectionOptions(checkedCollections);
+        }
+    });
+    [productSearch, productCategoryFilter, productVisibilityFilter, productSort].forEach(control => control.addEventListener('input', () => {
+        currentProductPage = 1;
+        renderProducts();
+    }));
+    productViewMode.addEventListener('change', applyProductsViewMode);
     productType.addEventListener('change', toggleNewCategory);
     ['click', 'keydown', 'pointermove', 'touchstart'].forEach(eventName => document.addEventListener(eventName, resetInactivityTimer, { passive: true }));
 
@@ -573,13 +1208,18 @@
         if (action === 'delete') {
             const name = row.querySelector('[data-field="nombre"]').value;
             if (!window.confirm(`¿Eliminar "${name}" del catálogo?`)) return;
-            const restoreButton = setButtonState(event.target, 'Eliminando...');
+            const restoreButton = setButtonState(event.target, 'Eliminando...', false);
             const { error } = await client.from('productos').delete().eq('id', row.dataset.id);
             if (error) {
                 restoreButton();
                 setStatus(dashboardStatus, formatSupabaseError(error), true);
                 return;
             }
+            const featuredProducts = readFeaturedProducts();
+            Object.entries(featuredProducts).forEach(([categoria, id]) => {
+                if (id === row.dataset.id) delete featuredProducts[categoria];
+            });
+            writeFeaturedProducts(featuredProducts);
             allProducts = allProducts.filter(product => product.id !== row.dataset.id);
             row.remove();
             restoreButton('Eliminado');
@@ -607,10 +1247,13 @@
         const images = imageInputRow.files.length && row.querySelector('[data-field="modo-imagenes"]').value === 'reemplazar'
             ? newImages
             : existingImages.concat(newImages);
-        const restoreButton = setButtonState(event.target, 'Guardando...');
-        const cambios = { codigo: value('codigo'), nombre: value('nombre'), tipo: category, descripcion: value('descripcion'), precio: value('precio'), activo: row.querySelector('[data-field="activo"]').checked };
+        const coleccionesWrapper = row.querySelector('[data-field="colecciones"]');
+        const colecciones = Array.from(coleccionesWrapper?.querySelectorAll('input[type="checkbox"]:checked') || []).map(option => option.value.trim()).filter(Boolean);
+        const coleccionesTexto = normalizeCollections(colecciones).join(', ');
+        const restoreButton = setButtonState(event.target, 'Guardando...', false);
+        const cambios = { codigo: value('codigo'), nombre: value('nombre'), tipo: category, descripcion: value('descripcion'), precio: value('precio'), activo: row.querySelector('[data-field="activo"]').checked, colecciones: coleccionesTexto };
         if (imageInputRow.files.length) cambios.imagenes = images;
-        const { error } = await client.from('productos').update(cambios).eq('id', row.dataset.id);
+        const { error } = await updateProductWithFallback(row.dataset.id, cambios);
         if (!error) {
             const product = allProducts.find(item => item.id === row.dataset.id);
             if (product) Object.assign(product, cambios);
@@ -622,13 +1265,46 @@
             archivosPendientes.delete(imageInputRow);
             renderExistingImages(row);
         }
+        if (!error) {
+            const storedCollections = readProductCollections();
+            storedCollections[row.dataset.id] = normalizeCollections(colecciones);
+            writeProductCollections(storedCollections);
+        }
+        if (!error) {
+            const featuredProducts = readFeaturedProducts();
+            const previousCategory = categoryKey(product.tipo);
+            const nextCategory = categoryKey(category);
+            if (featuredProducts[previousCategory] === row.dataset.id && nextCategory) {
+                delete featuredProducts[previousCategory];
+                featuredProducts[nextCategory] = row.dataset.id;
+                writeFeaturedProducts(featuredProducts);
+            }
+        }
         restoreButton(error ? '' : 'Guardado');
         setStatus(dashboardStatus, error ? formatSupabaseError(error) : 'Cambios guardados.', Boolean(error));
     });
 
     productsList.addEventListener('change', event => {
+        if (event.target.matches('[data-merge-select]')) {
+            updateMergeSelectionUI();
+            return;
+        }
         if (event.target.matches('[data-field="imagenes"]')) {
             agregarArchivosAlInput(event.target, event.target.files);
+            return;
+        }
+        if (event.target.matches('[data-field="destacado"]')) {
+            const row = event.target.closest('[data-id]');
+            const tipoSeleccionado = row.querySelector('[data-field="tipo"]').value;
+            const featuredProducts = readFeaturedProducts();
+            const categoryKeyValue = categoryKey(tipoSeleccionado);
+            if (event.target.checked) {
+                featuredProducts[categoryKeyValue] = row.dataset.id;
+            } else if (featuredProducts[categoryKeyValue] === row.dataset.id) {
+                delete featuredProducts[categoryKeyValue];
+            }
+            writeFeaturedProducts(featuredProducts);
+            renderProducts();
             return;
         }
         if (!event.target.matches('[data-field="tipo"]')) return;
@@ -641,7 +1317,9 @@
     categoryList.addEventListener('click', async event => {
         if (event.target.dataset.categoryAction !== 'save') return;
         const row = event.target.closest('[data-category]');
-        const restoreButton = setButtonState(event.target, 'Guardando...');
+        const button = event.target.closest('button');
+        if (!button || !row) return;
+        const restoreButton = setButtonState(button, 'Guardando...');
         const value = field => row.querySelector(`[data-category-field="${field}"]`).value.trim();
         const { error } = await client.from('categorias').upsert({
             tipo: row.dataset.category,

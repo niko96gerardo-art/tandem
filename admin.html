@@ -28,18 +28,38 @@
         </section>
 
         <section class="admin-dashboard" id="dashboardView" hidden>
-            <div class="admin-heading">
-                <div>
-                    <p class="mono">[ CATÁLOGO ]</p>
-                    <h1>Trabajos</h1>
+            <div class="admin-dashboard-bar">
+                <div class="admin-heading">
+                    <div>
+                        <h1>Trabajos</h1>
+                    </div>
+                    <button class="btn" id="logoutButton" type="button">Cerrar sesión</button>
                 </div>
-                <button class="btn" id="logoutButton" type="button">Cerrar sesión</button>
+                <nav class="admin-tabs" aria-label="Secciones de administración">
+                    <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
+                    <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
+                    <button class="admin-tab" type="button" data-admin-tab="inicio" aria-selected="false">Página principal</button>
+                </nav>
+                <div class="admin-dashboard-actions">
+                    <p class="admin-status" id="dashboardStatus" role="status"></p>
+                    <button id="mergeSelectedProductsButton" class="btn btn-light" type="button" disabled>Fusionar trabajos seleccionados</button>
+                </div>
             </div>
-            <nav class="admin-tabs" aria-label="Secciones de administración">
-                <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
-                <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
-                <button class="admin-tab" type="button" data-admin-tab="inicio" aria-selected="false">Página principal</button>
-            </nav>
+            <div class="admin-storage-panel" id="storageUsagePanel" hidden>
+                <div class="admin-storage-header">
+                    <div>
+                        <p class="mono">[ STORAGE ]</p>
+                        <h2>Espacio en Supabase</h2>
+                    </div>
+                </div>
+                <div class="admin-storage-bar" aria-label="Uso de almacenamiento en Supabase">
+                    <span id="storageUsageFill"></span>
+                </div>
+                <div class="admin-storage-meta">
+                    <span id="storageUsageText">Cargando...</span>
+                </div>
+                <div id="storageUsageBuckets" class="admin-storage-buckets"></div>
+            </div>
             <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
                 <form id="productForm" class="admin-form admin-product-form">
                 <h2>Agregar trabajo</h2>
@@ -61,7 +81,6 @@
                 <div class="admin-image-preview" id="imagePreview"></div>
                 <button class="btn btn-accent" type="submit">Guardar trabajo</button>
                 </form>
-                <p class="admin-status" id="dashboardStatus" role="status"></p>
                 <div class="admin-products-toolbar" aria-label="Filtrar trabajos">
                     <label>Buscar<input id="productSearch" type="search" placeholder="Código, nombre o descripción"></label>
                     <label>Categoría<select id="productCategoryFilter"><option value="">Todas las categorías</option></select></label>
@@ -69,7 +88,9 @@
                     <label>Ordenar<select id="productSort"><option value="nuevos">Más nuevos</option><option value="antiguos">Más antiguos</option><option value="alfabetico">Código A-Z</option></select></label>
                 </div>
                 <p class="admin-results-count" id="productsCount" aria-live="polite"></p>
+                <nav class="admin-pagination" data-product-pagination aria-label="Paginación superior de trabajos" hidden></nav>
                 <div class="admin-products" id="productsList"></div>
+                <nav class="admin-pagination" data-product-pagination aria-label="Paginación inferior de trabajos" hidden></nav>
             </div>
             <section class="admin-category-editor admin-panel" data-admin-panel="categorias" hidden>
                 <h2>Textos de categorías</h2>

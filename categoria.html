@@ -63,11 +63,49 @@
         const navLinks = document.getElementById('navLinks');
         menuToggle.addEventListener('click', () => navLinks.classList.toggle('active'));
         navLinks.querySelectorAll('a').forEach(enlace => enlace.addEventListener('click', () => navLinks.classList.remove('active')));
-        const tipo = new URLSearchParams(window.location.search).get('tipo');
-        if (tipo) {
-            const cargar = window.cargarProductosDesdeSupabase ? cargarDetalleDesdeSupabase(tipo) : cargarDetalleDesdeSheet(tipo);
-            cargar.catch(() => cargarDetalleDesdeSheet(tipo).catch(() => {}));
+        const params = new URLSearchParams(window.location.search);
+        const tipo = params.get('tipo');
+        const coleccion = params.get('coleccion');
+        const detalleUltimas = document.querySelector('[data-detalle-ultimas]');
+        const detalleTodos = document.querySelector('[data-detalle-todos]');
+
+        function mostrarIndicadorCargaCategoria() {
+            detalleUltimas.innerHTML = '<div class="catalogo-loading"><span class="catalogo-loading-spinner" aria-hidden="true"></span><span>Cargando productos...</span></div>';
+            detalleTodos.innerHTML = '<div class="catalogo-loading"><span class="catalogo-loading-spinner" aria-hidden="true"></span><span>Cargando productos...</span></div>';
         }
+
+        mostrarIndicadorCargaCategoria();
+
+        async function cargarPaginaCategoria() {
+            try {
+                if (coleccion) {
+                    if (!window.cargarProductosDesdeSupabase) {
+                        throw new Error('Sin soporte para colecciones sin Supabase');
+                    }
+                    await cargarDetalleDesdeColeccion(coleccion);
+                    return;
+                }
+
+                if (tipo) {
+                    if (window.cargarProductosDesdeSupabase) {
+                        await cargarDetalleDesdeSupabase(tipo);
+                        return;
+                    }
+                    await cargarDetalleDesdeSheet(tipo);
+                }
+            } catch (error) {
+                console.error(error);
+                if (tipo) {
+                    try {
+                        await cargarDetalleDesdeSheet(tipo);
+                    } catch (sheetError) {
+                        console.error(sheetError);
+                    }
+                }
+            }
+        }
+
+        cargarPaginaCategoria();
     </script>
 </body>
 </html>
