@@ -20,7 +20,12 @@
                 <label for="email">Correo electrónico</label>
                 <input id="email" type="email" required autocomplete="email">
                 <label for="password">Contraseña</label>
-                <input id="password" type="password" required autocomplete="current-password">
+                <div class="admin-password-field">
+                    <input id="password" type="password" required autocomplete="current-password">
+                    <button class="admin-password-toggle" id="togglePassword" type="button" aria-label="Mostrar contraseña" aria-controls="password" aria-pressed="false" title="Mostrar contraseña">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                </div>
                 <label class="admin-check"><input id="rememberSession" type="checkbox"> Mantener la sesión iniciada</label>
                 <button class="btn btn-accent" type="submit">Ingresar</button>
             </form>
@@ -29,37 +34,39 @@
 
         <section class="admin-dashboard" id="dashboardView" hidden>
             <div class="admin-dashboard-bar">
-                <div class="admin-heading">
-                    <div>
-                        <h1>Trabajos</h1>
-                    </div>
-                    <button class="btn" id="logoutButton" type="button">Cerrar sesión</button>
-                </div>
+                <button class="admin-logout-icon" id="logoutButton" type="button" aria-label="Cerrar sesión" title="Cerrar sesión">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 4H5v16h5"></path><path d="M14 16l4-4-4-4"></path><path d="M18 12H9"></path></svg>
+                </button>
                 <nav class="admin-tabs" aria-label="Secciones de administración">
                     <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
                     <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
                     <button class="admin-tab" type="button" data-admin-tab="inicio" aria-selected="false">Página principal</button>
+                    <button class="admin-tab" type="button" data-admin-tab="espacio" aria-selected="false">Almacenamiento</button>
                 </nav>
                 <div class="admin-dashboard-actions">
                     <p class="admin-status" id="dashboardStatus" role="status"></p>
-                    <button id="mergeSelectedProductsButton" class="btn btn-light" type="button" disabled>Fusionar trabajos seleccionados</button>
                 </div>
             </div>
-            <div class="admin-storage-panel" id="storageUsagePanel" hidden>
-                <div class="admin-storage-header">
-                    <div>
-                        <p class="mono">[ STORAGE ]</p>
-                        <h2>Espacio en Supabase</h2>
+            <button id="mergeSelectedProductsButton" class="admin-merge-button" type="button" aria-label="Fusionar trabajos seleccionados" title="Seleccioná al menos dos trabajos para fusionarlos" disabled>
+                Fusionar
+            </button>
+            <section class="admin-panel" data-admin-panel="espacio" hidden>
+                <div class="admin-storage-panel" id="storageUsagePanel" hidden>
+                    <div class="admin-storage-header">
+                        <div>
+                            <p class="mono">[ ESPACIO ]</p>
+                            <h2>Espacio de almacenamiento</h2>
+                        </div>
                     </div>
+                    <div class="admin-storage-bar" aria-label="Uso de almacenamiento">
+                        <span id="storageUsageFill"></span>
+                    </div>
+                    <div class="admin-storage-meta">
+                        <span id="storageUsageText">Cargando...</span>
+                    </div>
+                    <div id="storageUsageBuckets" class="admin-storage-buckets"></div>
                 </div>
-                <div class="admin-storage-bar" aria-label="Uso de almacenamiento en Supabase">
-                    <span id="storageUsageFill"></span>
-                </div>
-                <div class="admin-storage-meta">
-                    <span id="storageUsageText">Cargando...</span>
-                </div>
-                <div id="storageUsageBuckets" class="admin-storage-buckets"></div>
-            </div>
+            </section>
             <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
                 <form id="productForm" class="admin-form admin-product-form">
                 <h2>Agregar trabajo</h2>
@@ -71,7 +78,7 @@
                 <select id="productType" required></select>
                 <input id="newProductType" placeholder="Nombre de la nueva categoría" hidden>
                 <label for="productDescription">Descripción</label>
-                <textarea id="productDescription" rows="3"></textarea>
+                <textarea id="productDescription" class="admin-text-editor" rows="6"></textarea>
                 <label for="productPrice">Precio</label>
                 <input id="productPrice" placeholder="Opcional">
                     <label class="admin-dropzone" for="productImages">

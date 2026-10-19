@@ -3,6 +3,8 @@
     const loginView = document.getElementById('loginView');
     const dashboardView = document.getElementById('dashboardView');
     const loginForm = document.getElementById('loginForm');
+    const password = document.getElementById('password');
+    const togglePasswordButton = document.getElementById('togglePassword');
     const productForm = document.getElementById('productForm');
     const loginStatus = document.getElementById('loginStatus');
     const dashboardStatus = document.getElementById('dashboardStatus');
@@ -53,8 +55,16 @@
         mabel_photos: ['Mabel1.jpeg', 'Mabel2.jpeg']
     };
 
+    togglePasswordButton.addEventListener('click', () => {
+        const isVisible = password.type === 'password';
+        password.type = isVisible ? 'text' : 'password';
+        togglePasswordButton.setAttribute('aria-label', isVisible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        togglePasswordButton.setAttribute('title', isVisible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        togglePasswordButton.setAttribute('aria-pressed', String(isVisible));
+    });
+
     if (!configReady) {
-        loginStatus.textContent = 'Falta configurar la conexión con Supabase.';
+        loginStatus.textContent = 'El panel no está disponible en este momento. Avisale a soporte. Código: ADM-05.';
         loginForm.querySelector('button').disabled = true;
         return;
     }
@@ -148,6 +158,52 @@
         element.classList.toggle('admin-status-success', !error && Boolean(message));
     }
 
+    function resizeTextEditor(textarea) {
+        textarea.style.height = 'auto';
+        const styles = window.getComputedStyle(textarea);
+        const verticalBorders = parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
+        textarea.style.height = `${textarea.scrollHeight + verticalBorders + 4}px`;
+    }
+
+    function resizeTextEditors(container) {
+        container.querySelectorAll('textarea.admin-text-editor').forEach(resizeTextEditor);
+    }
+
+    dashboardView.addEventListener('input', event => {
+        if (event.target.matches('textarea.admin-text-editor')) {
+            resizeTextEditor(event.target);
+        }
+    });
+
+    function formatSupabaseError(error, operation = 'save') {
+        const message = error && typeof error === 'object' ? error.message || String(error) : String(error || '');
+        const status = Number(error?.status);
+        let code;
+        let friendlyMessage;
+
+        if (status === 0 || /fetch|network|gateway|502|503|timeout|load failed|failed to fetch|connection/i.test(message)) {
+            code = 'ADM-01';
+            friendlyMessage = 'No pudimos conectar con el servicio. Revisá tu conexión y probá de nuevo en unos minutos.';
+        } else if (/invalid login credentials|user not found|email not confirmed/i.test(message)) {
+            code = 'ADM-02';
+            friendlyMessage = 'Revisá que el correo y la contraseña estén escritos correctamente.';
+        } else if (/violates row-level security policy|policy|permission denied|unauthorized|forbidden/i.test(message) || status === 401 || status === 403) {
+            code = 'ADM-03';
+            friendlyMessage = 'No se pudo completar el cambio. Avisale a soporte e indicá este código.';
+        } else if (/storage|bucket|upload|image|video/i.test(message) || operation === 'upload') {
+            code = 'ADM-04';
+            friendlyMessage = 'No se pudieron subir las fotos o videos. Probá con otros archivos; si continúa, avisale a soporte.';
+        } else {
+            code = 'ADM-05';
+            friendlyMessage = operation === 'load'
+                ? 'No pudimos cargar la información. Probá de nuevo en unos minutos.'
+                : 'No pudimos guardar los cambios. Probá de nuevo; si continúa, avisale a soporte.';
+        }
+
+        console.error(`[${code}] Falló la operación de administración (${operation}).`, error);
+        return `${friendlyMessage} Código: ${code}.`;
+    }
+
     function formatBytes(bytes) {
         const safeBytes = Number.isFinite(bytes) ? Math.max(0, bytes) : 0;
         if (safeBytes < 1024) return `${safeBytes} B`;
@@ -200,7 +256,7 @@
 
             let warningText = '';
             if (percentageUsed >= STORAGE_CRITICAL_THRESHOLD * 100) {
-                warningText = ' · Atención: queda poco espacio en Supabase Storage.';
+                warningText = ' · Atención: queda poco espacio de almacenamiento.';
             } else if (percentageUsed >= STORAGE_WARNING_THRESHOLD * 100) {
                 warningText = ' · Cuidado: ya usaste más del 70% del espacio disponible.';
             }
@@ -222,24 +278,10 @@
                 `;
             }).join('');
         } catch (error) {
-            text.textContent = 'No se pudo consultar el espacio de Supabase Storage.';
+            text.textContent = 'No se pudo consultar el espacio de almacenamiento.';
             fill.style.width = '0%';
-            buckets.innerHTML = `<p class="admin-storage-error">${formatSupabaseError(error)}</p>`;
+            buckets.innerHTML = `<p class="admin-storage-error">${formatSupabaseError(error, 'load')}</p>`;
         }
-    }
-
-    function formatSupabaseError(error) {
-        const message = error && typeof error === 'object' ? error.message || String(error) : String(error || '');
-
-        if (/violates row-level security policy/i.test(message)) {
-            return 'Supabase está bloqueando la escritura por políticas RLS. Revisá las políticas de la tabla productos y, si estás subiendo videos, también el bucket product-videos para permitir insertar y actualizar con sesión autenticada.';
-        }
-
-        if (/policy/i.test(message) && /storage|bucket/i.test(message)) {
-            return 'Supabase está bloqueando el acceso al bucket de almacenamiento. Revisá las políticas del bucket product-images o product-videos para permitir subir archivos con la sesión autenticada.';
-        }
-
-        return message || 'No se pudo completar la operación.';
     }
 
     function hasMissingCollectionsColumnError(error) {
@@ -483,6 +525,7 @@
                 </article>
             `).join('')
             : '<p>No hay colecciones creadas todavía.</p>';
+        resizeTextEditors(collectionList);
     }
 
     function readProductCollections() {
@@ -568,19 +611,19 @@
                 <input id="homeConfigHeroTitle" value="${escapeAttribute(config.hero_title)}" placeholder="Ej: DISEÑO Y SERIGRAFÍA">
 
                 <label for="homeConfigHeroDescription">Descripción del hero</label>
-                <textarea id="homeConfigHeroDescription" rows="3" placeholder="Descripción principal de la portada">${escapeText(config.hero_description)}</textarea>
+                <textarea id="homeConfigHeroDescription" class="admin-text-editor" rows="6" placeholder="Descripción principal de la portada">${escapeText(config.hero_description)}</textarea>
 
                 <label for="homeConfigCatalogTitle">Título de la sección catálogo</label>
                 <input id="homeConfigCatalogTitle" value="${escapeAttribute(config.catalog_title)}" placeholder="Ej: Productos">
 
                 <label for="homeConfigCatalogText">Texto que se muestra en el catálogo</label>
-                <textarea id="homeConfigCatalogText" rows="3" placeholder="Texto breve para la sección de catálogo">${escapeText(config.catalog_text)}</textarea>
+                <textarea id="homeConfigCatalogText" class="admin-text-editor" rows="6" placeholder="Texto breve para la sección de catálogo">${escapeText(config.catalog_text)}</textarea>
 
                 <label for="homeConfigAboutTitle">Título de “Detrás del Taller”</label>
                 <input id="homeConfigAboutTitle" value="${escapeAttribute(config.about_title)}" placeholder="Ej: Detrás del Taller">
 
                 <label for="homeConfigAboutContent">Contenido de “Detrás del Taller”</label>
-                <textarea id="homeConfigAboutContent" rows="6" placeholder="Podés usar HTML básico para dar formato.">${escapeText(config.about_content)}</textarea>
+                <textarea id="homeConfigAboutContent" class="admin-text-editor" rows="10" placeholder="Podés usar HTML básico para dar formato.">${escapeText(config.about_content)}</textarea>
 
                 <label for="homeConfigMabelPhotos">Fotos de Mabel</label>
                 <input id="homeConfigMabelPhotos" type="file" accept="image/*" multiple>
@@ -598,6 +641,7 @@
                 <button class="btn btn-accent" type="submit">Guardar contenido</button>
             </form>
         `;
+        resizeTextEditors(homeConfigEditor);
     }
 
     async function loadHomeConfigForAdmin() {
@@ -610,7 +654,7 @@
                 }
             }
         } catch (error) {
-            setStatus(dashboardStatus, 'No se pudo sincronizar la configuración de la página principal desde Supabase.', true);
+            setStatus(dashboardStatus, formatSupabaseError(error, 'load'), true);
         }
     }
 
@@ -639,7 +683,7 @@
     async function loadProducts() {
         const { data, error } = await client.from('productos').select('*').order('orden').order('creado_en', { ascending: false });
         if (error) {
-            setStatus(dashboardStatus, error.message, true);
+            setStatus(dashboardStatus, formatSupabaseError(error, 'load'), true);
             return;
         }
         const storedCollections = readProductCollections();
@@ -749,9 +793,13 @@
         if (!mergeSelectedProductsButton || !productsList) return;
         const selected = productsList.querySelectorAll('[data-merge-select]:checked').length;
         mergeSelectedProductsButton.disabled = selected < 2;
-        mergeSelectedProductsButton.textContent = selected >= 2
+        mergeSelectedProductsButton.textContent = selected >= 2 ? `Fusionar (${selected})` : 'Fusionar';
+        mergeSelectedProductsButton.setAttribute('aria-label', selected >= 2
             ? `Fusionar ${selected} trabajos seleccionados`
-            : 'Fusionar trabajos seleccionados';
+            : 'Fusionar trabajos seleccionados; elegí al menos dos');
+        mergeSelectedProductsButton.title = selected >= 2
+            ? `Fusionar ${selected} trabajos seleccionados`
+            : 'Seleccioná al menos dos trabajos para fusionarlos';
     }
 
     function renderExistingImages(row) {
@@ -763,7 +811,7 @@
     async function loadCategoryDetails() {
         const { data, error } = await client.from('categorias').select('*').order('tipo');
         if (error) {
-            categoryList.innerHTML = '<p>Ejecutá la actualización de categorías en Supabase para editar estos textos.</p>';
+            categoryList.innerHTML = `<p>${formatSupabaseError(error, 'load')}</p>`;
             return;
         }
         categoryDetails = Object.fromEntries(data.map(category => [categoryKey(category.tipo), category]));
@@ -772,12 +820,13 @@
             return `<article class="admin-category-row" data-category="${escapeAttribute(category)}">
                 <h3>${escapeText(category)}</h3>
                 <label>Título de la categoría<input data-category-field="titulo" value="${escapeAttribute(detail.titulo)}" placeholder="Ej: Remeras"></label>
-                <label>Descripción de portada<textarea data-category-field="texto_tarjeta" rows="2" placeholder="Texto breve para la página principal">${escapeText(detail.texto_tarjeta)}</textarea></label>
-                <label>Texto superior de la categoría<textarea data-category-field="texto" rows="4" placeholder="Descripción general de la categoría">${escapeText(detail.texto)}</textarea></label>
+                <label>Descripción de portada<textarea class="admin-text-editor" data-category-field="texto_tarjeta" rows="5" placeholder="Texto breve para la página principal">${escapeText(detail.texto_tarjeta)}</textarea></label>
+                <label>Texto superior de la categoría<textarea class="admin-text-editor" data-category-field="texto" rows="7" placeholder="Descripción general de la categoría">${escapeText(detail.texto)}</textarea></label>
                 <label>Precio general<input data-category-field="precio" value="${escapeAttribute(detail.precio)}" placeholder="Opcional"></label>
                 <button class="btn" data-category-action="save" type="button">Guardar textos</button>
             </article>`;
         }).join('');
+        resizeTextEditors(categoryList);
     }
 
     function escapeAttribute(value) {
@@ -881,16 +930,7 @@
         client = createClient(Boolean(rememberSession && rememberSession.checked));
         const { error } = await client.auth.signInWithPassword({ email: email.value, password: password.value });
         if (error) {
-            const esProblemaDeConexion = error.status === 0 || /fetch|network|gateway|502|503|timeout|load failed|failed to fetch/i.test(error.message);
-            const esCredencialInvalida = error.status === 400 || /invalid login credentials|user not found|email not confirmed/i.test(error.message);
-
-            const mensaje = esProblemaDeConexion
-                ? 'No se pudo iniciar sesión porque la base de datos o el servicio de autenticación de Supabase no está disponible en este momento. Verificá que el proyecto esté activo y volvé a intentar.'
-                : esCredencialInvalida
-                    ? 'El correo o la contraseña no son correctos.'
-                    : `No se pudo ingresar porque la base de datos o el servicio de autenticación no respondió correctamente. Detalle: ${error.message}`;
-
-            setStatus(loginStatus, mensaje, true);
+            setStatus(loginStatus, formatSupabaseError(error, 'login'), true);
             return;
         }
         showDashboard();
@@ -926,7 +966,7 @@
 
             writeHomeConfig(nextConfig);
             try {
-                await client.from('pagina_principal').upsert({
+                const { error } = await client.from('pagina_principal').upsert({
                     id: 'inicio',
                     titulo_pagina: nextConfig.page_title,
                     hero_mono: nextConfig.hero_mono,
@@ -940,15 +980,17 @@
                     foto_mabel_2: nextConfig.mabel_photos[1] || '',
                     foto_mabel_galeria: JSON.stringify(nextConfig.mabel_photos)
                 });
+                if (error) throw error;
             } catch (error) {
-                setStatus(dashboardStatus, 'Se guardó localmente en este navegador. Para sincronizar con Supabase, creá la tabla pagina_principal con esas columnas.', true);
+                setStatus(dashboardStatus, `El contenido quedó guardado en este dispositivo, pero no se compartió con el catálogo. ${formatSupabaseError(error)}`, true);
+                return;
             }
 
             saved = true;
             renderHomeConfigEditor();
             setStatus(dashboardStatus, 'Contenido de la página principal guardado.');
         } catch (error) {
-            setStatus(dashboardStatus, formatSupabaseError(error), true);
+            setStatus(dashboardStatus, formatSupabaseError(error, 'upload'), true);
         } finally {
             restoreButton(saved ? 'Guardado' : '');
         }
@@ -1075,7 +1117,7 @@
             setStatus(dashboardStatus, 'Trabajo guardado.');
             loadProducts();
         } catch (error) {
-            setStatus(dashboardStatus, formatSupabaseError(error), true);
+            setStatus(dashboardStatus, formatSupabaseError(error, 'save'), true);
         } finally {
             restoreButton(saved ? 'Guardado' : '');
         }
@@ -1144,11 +1186,9 @@
             setStatus(dashboardStatus, 'Trabajos fusionados correctamente.');
             await loadProducts();
         } catch (error) {
-            setStatus(dashboardStatus, formatSupabaseError(error), true);
+            setStatus(dashboardStatus, formatSupabaseError(error, 'save'), true);
         } finally {
             updateMergeSelectionUI();
-            mergeSelectedProductsButton.disabled = false;
-            mergeSelectedProductsButton.textContent = 'Fusionar trabajos seleccionados';
         }
     });
 
@@ -1212,7 +1252,7 @@
             const { error } = await client.from('productos').delete().eq('id', row.dataset.id);
             if (error) {
                 restoreButton();
-                setStatus(dashboardStatus, formatSupabaseError(error), true);
+                setStatus(dashboardStatus, formatSupabaseError(error, 'save'), true);
                 return;
             }
             const featuredProducts = readFeaturedProducts();
@@ -1242,46 +1282,57 @@
             }
         }
         const imageInputRow = row.querySelector('[data-field="imagenes"]');
-        const existingImages = JSON.parse(row.dataset.images || '[]');
-        const newImages = imageInputRow.files.length ? await uploadImages(imageInputRow.files) : [];
-        const images = imageInputRow.files.length && row.querySelector('[data-field="modo-imagenes"]').value === 'reemplazar'
-            ? newImages
-            : existingImages.concat(newImages);
-        const coleccionesWrapper = row.querySelector('[data-field="colecciones"]');
-        const colecciones = Array.from(coleccionesWrapper?.querySelectorAll('input[type="checkbox"]:checked') || []).map(option => option.value.trim()).filter(Boolean);
-        const coleccionesTexto = normalizeCollections(colecciones).join(', ');
-        const restoreButton = setButtonState(event.target, 'Guardando...', false);
-        const cambios = { codigo: value('codigo'), nombre: value('nombre'), tipo: category, descripcion: value('descripcion'), precio: value('precio'), activo: row.querySelector('[data-field="activo"]').checked, colecciones: coleccionesTexto };
-        if (imageInputRow.files.length) cambios.imagenes = images;
-        const { error } = await updateProductWithFallback(row.dataset.id, cambios);
-        if (!error) {
+        const restoreButton = setButtonState(event.target, 'Subiendo y guardando...', false);
+        let saved = false;
+        setStatus(dashboardStatus, 'Guardando cambios...');
+        try {
+            const existingImages = JSON.parse(row.dataset.images || '[]');
+            const newImages = imageInputRow.files.length ? await uploadImages(imageInputRow.files) : [];
+            const images = imageInputRow.files.length && row.querySelector('[data-field="modo-imagenes"]').value === 'reemplazar'
+                ? newImages
+                : existingImages.concat(newImages);
+            const coleccionesWrapper = row.querySelector('[data-field="colecciones"]');
+            const colecciones = Array.from(coleccionesWrapper?.querySelectorAll('input[type="checkbox"]:checked') || []).map(option => option.value.trim()).filter(Boolean);
+            const coleccionesTexto = normalizeCollections(colecciones).join(', ');
+            const cambios = { codigo: value('codigo'), nombre: value('nombre'), tipo: category, descripcion: value('descripcion'), precio: value('precio'), activo: row.querySelector('[data-field="activo"]').checked, colecciones: coleccionesTexto };
+            if (imageInputRow.files.length) cambios.imagenes = images;
+            const { error } = await updateProductWithFallback(row.dataset.id, cambios);
+            if (error) throw error;
+
             const product = allProducts.find(item => item.id === row.dataset.id);
+            const previousCategory = categoryKey(product?.tipo || category);
             if (product) Object.assign(product, cambios);
-        }
-        if (!error && imageInputRow.files.length) {
-            row.dataset.images = JSON.stringify(images);
-            row.querySelector('img').src = convertirImagenAdministrativa(images[0]);
-            imageInputRow.value = '';
-            archivosPendientes.delete(imageInputRow);
-            renderExistingImages(row);
-        }
-        if (!error) {
+
+            if (imageInputRow.files.length) {
+                row.dataset.images = JSON.stringify(images);
+                const media = row.querySelector(':scope > img, :scope > video');
+                const preview = document.createElement('template');
+                preview.innerHTML = renderMediaMarkup(images[0], { compact: true });
+                const nextMedia = preview.content.firstElementChild;
+                if (media && nextMedia) media.replaceWith(nextMedia);
+                imageInputRow.value = '';
+                archivosPendientes.delete(imageInputRow);
+                renderExistingImages(row);
+            }
+
             const storedCollections = readProductCollections();
             storedCollections[row.dataset.id] = normalizeCollections(colecciones);
             writeProductCollections(storedCollections);
-        }
-        if (!error) {
+
             const featuredProducts = readFeaturedProducts();
-            const previousCategory = categoryKey(product.tipo);
             const nextCategory = categoryKey(category);
             if (featuredProducts[previousCategory] === row.dataset.id && nextCategory) {
                 delete featuredProducts[previousCategory];
                 featuredProducts[nextCategory] = row.dataset.id;
                 writeFeaturedProducts(featuredProducts);
             }
+            saved = true;
+            setStatus(dashboardStatus, 'Cambios guardados.');
+        } catch (error) {
+            setStatus(dashboardStatus, formatSupabaseError(error, 'save'), true);
+        } finally {
+            restoreButton(saved ? 'Guardado' : '');
         }
-        restoreButton(error ? '' : 'Guardado');
-        setStatus(dashboardStatus, error ? formatSupabaseError(error) : 'Cambios guardados.', Boolean(error));
     });
 
     productsList.addEventListener('change', event => {
@@ -1329,14 +1380,28 @@
             precio: value('precio')
         });
         restoreButton(error ? '' : 'Guardado');
-        setStatus(dashboardStatus, error ? error.message : 'Textos de categoría guardados.', Boolean(error));
+        setStatus(dashboardStatus, error ? formatSupabaseError(error, 'save') : 'Textos de categoría guardados.', Boolean(error));
     });
 
-    document.getElementById('logoutButton').addEventListener('click', async () => {
-        await client.auth.signOut();
+    async function cerrarSesionAdministracion() {
+        try {
+            const { error } = await client.auth.signOut();
+            if (error) {
+                setStatus(dashboardStatus, formatSupabaseError(error, 'logout'), true);
+                return false;
+            }
+        } catch (error) {
+            setStatus(dashboardStatus, formatSupabaseError(error, 'logout'), true);
+            return false;
+        }
+        window.clearTimeout(inactivityTimer);
         dashboardView.hidden = true;
         loginView.hidden = false;
-    });
+        return true;
+    }
+
+    window.cerrarSesionAdministracion = cerrarSesionAdministracion;
+    document.getElementById('logoutButton')?.addEventListener('click', cerrarSesionAdministracion);
 
     client.auth.getSession().then(({ data }) => { if (data.session) showDashboard(); });
 })();

@@ -122,6 +122,7 @@
     <section class="admin-inline admin-overlay" id="adminAccess" hidden>
         <div class="admin-shell">
             <button class="admin-overlay-back" id="adminBackButton" type="button">Volver al catálogo</button>
+            <button class="admin-overlay-minimize" id="adminMinimizeButton" type="button" aria-label="Minimizar administración" title="Minimizar administración">−</button>
             <button class="admin-overlay-close" id="adminOverlayClose" type="button" aria-label="Cerrar administración">&times;</button>
             <div id="syncStatusBanner" class="sync-banner" aria-live="polite"></div>
             <section class="admin-login" id="loginView">
@@ -129,7 +130,13 @@
                 <h1>Administrar catálogo</h1>
                 <form id="loginForm" class="admin-form">
                     <label for="email">Correo electrónico</label><input id="email" type="email" required autocomplete="email">
-                    <label for="password">Contraseña</label><input id="password" type="password" required autocomplete="current-password">
+                    <label for="password">Contraseña</label>
+                    <div class="admin-password-field">
+                        <input id="password" type="password" required autocomplete="current-password">
+                        <button class="admin-password-toggle" id="togglePassword" type="button" aria-label="Mostrar contraseña" aria-controls="password" aria-pressed="false" title="Mostrar contraseña">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
                     <label class="admin-check"><input id="rememberSession" type="checkbox"> Mantener la sesión iniciada</label>
                     <button class="btn btn-accent" type="submit">Ingresar</button>
                 </form>
@@ -137,33 +144,37 @@
             </section>
             <section class="admin-dashboard" id="dashboardView" hidden>
                 <div class="admin-dashboard-bar">
-                    <div class="admin-heading"><div><h1>Trabajos</h1></div><button class="btn" id="logoutButton" type="button">Cerrar sesión</button></div>
                     <div class="admin-dashboard-actions">
                         <p class="admin-status" id="dashboardStatus" role="status"></p>
-                        <button id="mergeSelectedProductsButton" class="btn btn-light" type="button" disabled>Fusionar trabajos seleccionados</button>
                     </div>
                 </div>
+                <button id="mergeSelectedProductsButton" class="admin-merge-button" type="button" aria-label="Fusionar trabajos seleccionados" title="Seleccioná al menos dos trabajos para fusionarlos" disabled>
+                    Fusionar
+                </button>
                 <nav class="admin-tabs" aria-label="Secciones de administración">
                     <button class="admin-tab admin-tab-active" type="button" data-admin-tab="trabajos" aria-selected="true">Trabajos</button>
                     <button class="admin-tab" type="button" data-admin-tab="categorias" aria-selected="false">Categorías</button>
                     <button class="admin-tab" type="button" data-admin-tab="colecciones" aria-selected="false">Colecciones</button>
                     <button class="admin-tab" type="button" data-admin-tab="inicio" aria-selected="false">Página principal</button>
+                    <button class="admin-tab" type="button" data-admin-tab="espacio" aria-selected="false">Almacenamiento</button>
                 </nav>
-                <div class="admin-storage-panel" id="storageUsagePanel" hidden>
-                    <div class="admin-storage-header">
-                        <div>
-                            <p class="mono">[ STORAGE ]</p>
-                            <h2>Espacio en Supabase</h2>
+                <section class="admin-panel" data-admin-panel="espacio" hidden>
+                    <div class="admin-storage-panel" id="storageUsagePanel" hidden>
+                        <div class="admin-storage-header">
+                            <div>
+                                <p class="mono">[ ESPACIO ]</p>
+                                <h2>Espacio de almacenamiento</h2>
+                            </div>
                         </div>
+                        <div class="admin-storage-bar" aria-label="Uso de almacenamiento">
+                            <span id="storageUsageFill"></span>
+                        </div>
+                        <div class="admin-storage-meta">
+                            <span id="storageUsageText">Cargando...</span>
+                        </div>
+                        <div id="storageUsageBuckets" class="admin-storage-buckets"></div>
                     </div>
-                    <div class="admin-storage-bar" aria-label="Uso de almacenamiento en Supabase">
-                        <span id="storageUsageFill"></span>
-                    </div>
-                    <div class="admin-storage-meta">
-                        <span id="storageUsageText">Cargando...</span>
-                    </div>
-                    <div id="storageUsageBuckets" class="admin-storage-buckets"></div>
-                </div>
+                </section>
                 <div class="admin-panel admin-panel-active" data-admin-panel="trabajos">
                     <form id="productForm" class="admin-form admin-product-form">
                     <h2>Agregar trabajo</h2>
@@ -176,7 +187,7 @@
                     </div>
                     <div class="admin-form-section">
                         <h3>Detalle y precio</h3>
-                        <label for="productDescription">Descripción del trabajo</label><textarea id="productDescription" rows="3" placeholder="Escribí una descripción clara y útil para el cliente."></textarea>
+                        <label for="productDescription">Descripción del trabajo</label><textarea id="productDescription" class="admin-text-editor" rows="6" placeholder="Escribí una descripción clara y útil para el cliente."></textarea>
                         <label for="productPrice">Precio</label><input id="productPrice" placeholder="Ej: 2500">
                     </div>
                     <div class="admin-form-section">
@@ -222,7 +233,7 @@
                             <label for="collectionName">Nombre de la colección</label>
                             <input id="collectionName" placeholder="Ej: Malvinas">
                             <label for="collectionDescription">Descripción</label>
-                            <textarea id="collectionDescription" rows="2" placeholder="Ej: Colección inspirada en las Malvinas y la historia familiar."></textarea>
+                            <textarea id="collectionDescription" class="admin-text-editor" rows="5" placeholder="Ej: Colección inspirada en las Malvinas y la historia familiar."></textarea>
                             <button class="btn btn-accent" type="submit">Agregar colección</button>
                         </div>
                     </form>
@@ -236,6 +247,7 @@
             </section>
         </div>
     </section>
+    <button class="admin-restore" id="adminRestoreButton" type="button" hidden>Volver a administración</button>
 
     <!-- MODAL (Ventana Emergente de Producto) -->
     <div id="productoModal" class="modal">
@@ -361,17 +373,36 @@
         });
         navLinks.querySelectorAll('a').forEach(enlace => enlace.addEventListener('click', () => navLinks.classList.remove('active')));
         const adminAccess = document.getElementById('adminAccess');
-        const closeAdminAccess = () => {
+        const adminRestoreButton = document.getElementById('adminRestoreButton');
+        const showAdminAccess = () => {
+            adminAccess.hidden = false;
+            adminRestoreButton.hidden = true;
+            document.body.classList.add('admin-open');
+        };
+        const closeAdminAccess = async () => {
+            if (window.cerrarSesionAdministracion) {
+                const signedOut = await window.cerrarSesionAdministracion();
+                if (!signedOut) return;
+            }
             adminAccess.hidden = true;
+            adminRestoreButton.hidden = true;
             document.body.classList.remove('admin-open');
         };
+        const minimizeAdminAccess = () => {
+            adminAccess.hidden = true;
+            adminRestoreButton.hidden = false;
+            document.body.classList.remove('admin-open');
+            adminRestoreButton.focus();
+        };
 
-        document.getElementById('adminAccessLink').addEventListener('click', () => {
-            adminAccess.hidden = false;
-            document.body.classList.add('admin-open');
-        });
+        document.getElementById('adminAccessLink').addEventListener('click', showAdminAccess);
         document.getElementById('adminOverlayClose').addEventListener('click', closeAdminAccess);
         document.getElementById('adminBackButton').addEventListener('click', closeAdminAccess);
+        document.getElementById('adminMinimizeButton').addEventListener('click', minimizeAdminAccess);
+        adminRestoreButton.addEventListener('click', showAdminAccess);
+        if (window.location.pathname.replace(/\/+$/, '') === '/admin') {
+            showAdminAccess();
+        }
         // =========================================
         // SCRIPT PARA LA VENTANA MODAL DE PRODUCTOS
         // =========================================
@@ -636,10 +667,20 @@
 
         catalogoGrid.innerHTML = '<div class="catalogo-loading"><span class="catalogo-loading-spinner" aria-hidden="true"></span><span>Cargando productos...</span></div>';
 
-        (window.cargarProductosDesdeSupabase ? Promise.all([cargarProductosDesdeSupabase(), window.cargarCategoriasDesdeSupabase ? cargarCategoriasDesdeSupabase() : Promise.resolve([])]).then(([productos, categorias]) => {
-            if (!productos.length) throw new Error('Supabase todavía no tiene productos.');
-            mostrarCatalogo(productos, categorias, true);
-        }).catch(() => cargarCatalogoDesdeSheet()) : cargarCatalogoDesdeSheet());
+        if (window.cargarProductosDesdeSupabase) {
+            Promise.all([
+                cargarProductosDesdeSupabase(),
+                window.cargarCategoriasDesdeSupabase ? cargarCategoriasDesdeSupabase() : Promise.resolve([])
+            ]).then(([productos, categorias]) => {
+                if (!productos.length) throw new Error('Todavía no hay productos disponibles.');
+                mostrarCatalogo(productos, categorias, true);
+            }).catch(error => {
+                console.error('No se pudo cargar el catálogo.', error);
+                catalogoGrid.innerHTML = '<p role="alert">No se pudo cargar el catálogo actualizado. Probá recargar la página más tarde.</p>';
+            });
+        } else {
+            cargarCatalogoDesdeSheet();
+        }
     </script>
     <script src="admin.js"></script>
     
